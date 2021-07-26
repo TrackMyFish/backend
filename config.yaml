@@ -1,0 +1,14 @@
+---
+server:
+  port: 8080
+
+  httpProxy:
+    enabled: true
+    port: 8443
+
+db:
+  host: localhost
+  port: 15432
+  username: trackmyfish
+  password: supersecretpassword
+  name: trackmyfish
