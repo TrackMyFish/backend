@@ -96,3 +96,52 @@ func (d *Manager) InsertFish(ctx context.Context, fish Fish) (Fish, error) {
 
 	return f, nil
 }
+
+func (d *Manager) GetFish(ctx context.Context) ([]Fish, error) {
+	fish := make([]Fish, 0)
+
+	rows, err := d.pool.Query(ctx, "SELECT id, genus, species, common_name, name, color, gender, purchase_date, ecosystem_name, ecosystem_type, ecosystem_location, salinity, climate FROM fish")
+	if err != nil {
+		return fish, errors.Wrap(err, "unable to get fish")
+	}
+
+	rowCount := 0
+	for rows.Next() {
+		f := Fish{}
+
+		if err := rows.Scan(&f.ID, &f.Genus, &f.Species, &f.CommonName, &f.Name, &f.Color, &f.Gender, &f.PurchaseDate, &f.EcosystemName, &f.EcosystemType, &f.EchosystemLocation, &f.Salinity, &f.Climate); err != nil {
+			return nil, errors.Wrap(err, "unable to scan row")
+		}
+
+		fish = append(fish, f)
+
+		rowCount++
+	}
+
+	if rows.Err() != nil {
+		return nil, errors.Wrap(rows.Err(), "erroring reading rows")
+	}
+
+	logrus.WithFields(logrus.Fields{"rowCount": rowCount}).Info("Fish queried successfully")
+
+	return fish, nil
+}
+
+func (d *Manager) DeleteFish(ctx context.Context, id int32) (Fish, error) {
+	f := Fish{}
+
+	err := d.pool.QueryRow(
+		ctx,
+		"DELETE FROM fish WHERE id=$1 RETURNING id, genus, species, common_name, name, color, gender, purchase_date, ecosystem_name, ecosystem_type, ecosystem_location, salinity, climate",
+		id,
+	).Scan(&f.ID, &f.Genus, &f.Species, &f.CommonName, &f.Name, &f.Color, &f.Gender, &f.PurchaseDate, &f.EcosystemName, &f.EcosystemType, &f.EchosystemLocation, &f.Salinity, &f.Climate)
+	if err != nil {
+		return f, errors.Wrap(err, "unable to delete fish")
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"id": f.ID,
+	}).Info("Fish deleted successfully")
+
+	return f, nil
+}
