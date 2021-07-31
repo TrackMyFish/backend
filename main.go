@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"embed"
 	"fmt"
+	"io/fs"
 	"net"
 	"net/http"
 	"os"
@@ -18,6 +20,9 @@ import (
 	"github.com/trackmyfish/backend/internal/server"
 	trackmyfishv1alpha1 "github.com/trackmyfish/proto/trackmyfish/v1alpha1"
 )
+
+//go:embed build
+var frontend embed.FS
 
 func init() {
 	// Log as JSON instead of the default ASCII formatter.
@@ -40,6 +45,8 @@ func main() {
 	viper.SetDefault("server.port", 8080)
 	viper.SetDefault("server.httpProxy.enabled", false)
 	viper.SetDefault("server.httpProxy.port", 8443)
+	viper.SetDefault("server.frontend.enabled", false)
+	viper.SetDefault("server.frontend.port", 80)
 
 	// DB defaults
 	viper.SetDefault("db.host", "localhost")
@@ -58,6 +65,9 @@ func main() {
 		httpProxyEnabled = viper.GetBool("server.httpProxy.enabled")
 		httpProxyPort    = viper.GetInt("server.httpProxy.port")
 
+		frontendEnabled = viper.GetBool("server.frontend.enabled")
+		frontendPort    = viper.GetInt("server.frontend.port")
+
 		dbHost     = viper.GetString("db.host")
 		dbPort     = viper.GetInt("db.port")
 		dbUsername = viper.GetString("db.username")
@@ -69,6 +79,8 @@ func main() {
 		"Server Port":        port,
 		"HTTP Proxy Enabled": httpProxyEnabled,
 		"HTTP Proxy Port":    httpProxyPort,
+		"Frontend Enabled":   frontendEnabled,
+		"Frontend Port":      frontendPort,
 		"Database Name":      dbName,
 		"Database Host":      dbHost,
 		"Database Port":      dbPort,
@@ -94,6 +106,10 @@ func main() {
 		go httpProxyServer(httpProxyPort, addr)
 	}
 
+	if frontendEnabled {
+		go frontendServer(frontendPort)
+	}
+
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		log.Fatal(err, "Failed to create listener")
@@ -106,6 +122,31 @@ func main() {
 	if err := gServer.Serve(listener); err != nil {
 		log.Fatal(err, "Failed to start server")
 	}
+}
+
+func frontendServer(port int) {
+	log.WithFields(log.Fields{
+		"port": port,
+	}).Info("Serving frontend")
+
+	h := http.NewServeMux()
+	sch, err := frontendHandler()
+	if err != nil {
+		log.Fatal(err, "unable to initialize frontend handler")
+	}
+
+	h.Handle("/", sch)
+
+	c := cors.New(cors.Options{
+		AllowedOrigins: []string{"*"},
+		AllowedHeaders: []string{"*"},
+		AllowedMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
+		MaxAge:         int(time.Hour * 24),
+	})
+
+	mux := c.Handler(h)
+
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), mux), "Failed to serve frontend")
 }
 
 // httpProxyServer starts a new http server listening on the specified port, proxying
@@ -153,4 +194,15 @@ func Handler(mux *runtime.ServeMux) http.Handler {
 			h.ServeHTTP(w, r)
 		})
 	}(mux)
+}
+
+func frontendHandler() (http.Handler, error) {
+	fsys := fs.FS(frontend)
+
+	sc, err := fs.Sub(fsys, "build")
+	if err != nil {
+		return nil, err
+	}
+
+	return http.FileServer(http.FS(sc)), nil
 }

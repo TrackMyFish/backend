@@ -31,6 +31,18 @@ grpcurl -protoset <(cd ../proto; ../proto/.cache/Darwin/x86_64/bin/buf image bui
 curl -H "Content-Type: application/json" -X POST localhost:8443/v1alpha1/fish -d '{"genus": "Pterophyllum", "species": "scalare", "commonName": "Angel Fish", "gender": "MALE"}'
 ```
 
+## List Fish
+
+```
+curl -H "Content-Type: application/json" -X GET localhost:8443/v1alpha1/fish
+```
+
+## Delete Fish
+
+```
+curl -H "Content-Type: application/json" -X DELETE localhost:8443/v1alpha1/fish/1
+```
+
 # ToDo
 
 * [ ] Write Tests
