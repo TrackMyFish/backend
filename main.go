@@ -12,7 +12,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/rs/cors"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -26,13 +26,13 @@ var frontend embed.FS
 
 func init() {
 	// Log as JSON instead of the default ASCII formatter.
-	log.SetFormatter(&log.JSONFormatter{})
+	logrus.SetFormatter(&logrus.JSONFormatter{})
 
 	// Output to stdout instead of the default stderr
-	log.SetOutput(os.Stdout)
+	logrus.SetOutput(os.Stdout)
 
 	// Only log the info severity or above.
-	log.SetLevel(log.InfoLevel)
+	logrus.SetLevel(logrus.InfoLevel)
 }
 
 func main() {
@@ -57,7 +57,7 @@ func main() {
 
 	err := viper.ReadInConfig()
 	if err != nil {
-		log.Fatal("unable to read config")
+		logrus.Fatal("unable to read config")
 	}
 
 	var (
@@ -75,7 +75,7 @@ func main() {
 		dbName     = viper.GetString("db.name")
 	)
 
-	log.WithFields(log.Fields{
+	logrus.WithFields(logrus.Fields{
 		"Server Port":        port,
 		"HTTP Proxy Enabled": httpProxyEnabled,
 		"HTTP Proxy Port":    httpProxyPort,
@@ -91,7 +91,7 @@ func main() {
 		server.Config{DBHost: dbHost, DBPort: dbPort, DBUsername: dbUsername, DBPassword: dbPassword, DBName: dbName},
 	)
 	if err != nil {
-		log.Fatalf("Unable to initialise new Server: %+v", err)
+		logrus.Fatalf("Unable to initialise new Server: %+v", err)
 	}
 
 	gServer := grpc.NewServer()
@@ -112,27 +112,27 @@ func main() {
 
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
-		log.Fatal(err, "Failed to create listener")
+		logrus.Fatal(err, "Failed to create listener")
 	}
 
-	log.WithFields(log.Fields{
+	logrus.WithFields(logrus.Fields{
 		"port": port,
 	}).Info("Starting grpc server")
 
 	if err := gServer.Serve(listener); err != nil {
-		log.Fatal(err, "Failed to start server")
+		logrus.Fatal(err, "Failed to start server")
 	}
 }
 
 func frontendServer(port int) {
-	log.WithFields(log.Fields{
+	logrus.WithFields(logrus.Fields{
 		"port": port,
 	}).Info("Serving frontend")
 
 	h := http.NewServeMux()
 	sch, err := frontendHandler()
 	if err != nil {
-		log.Fatal(err, "unable to initialize frontend handler")
+		logrus.Fatal(err, "unable to initialize frontend handler")
 	}
 
 	h.Handle("/", sch)
@@ -146,7 +146,7 @@ func frontendServer(port int) {
 
 	mux := c.Handler(h)
 
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), mux), "Failed to serve frontend")
+	logrus.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), mux), "Failed to serve frontend")
 }
 
 // httpProxyServer starts a new http server listening on the specified port, proxying
@@ -160,7 +160,7 @@ func httpProxyServer(port int, grpcAddr string) {
 	mux := runtime.NewServeMux()
 	opts := []grpc.DialOption{grpc.WithInsecure()}
 	if err := trackmyfishv1alpha1.RegisterTrackMyFishServiceHandlerFromEndpoint(ctx, mux, grpcAddr, opts); err != nil {
-		log.Fatal(err, "Failed to register http handler")
+		logrus.Fatal(err, "Failed to register http handler")
 	}
 
 	// Create a handler for our multiplexer.
@@ -175,11 +175,11 @@ func httpProxyServer(port int, grpcAddr string) {
 
 	h = c.Handler(h)
 
-	log.WithFields(log.Fields{
+	logrus.WithFields(logrus.Fields{
 		"port": port,
 	}).Info("Starting http proxy server")
 
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), h), "Failed to start http proxy server")
+	logrus.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), h), "Failed to start http proxy server")
 }
 
 func Handler(mux *runtime.ServeMux) http.Handler {
