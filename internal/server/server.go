@@ -74,6 +74,7 @@ func (s *Server) AddFish(ctx context.Context, req *trackmyfishv1alpha1.AddFishRe
 		EchosystemLocation: d.Ecosystem.Location,
 		Salinity:           d.Ecosystem.Salinity,
 		Climate:            d.Ecosystem.Climate,
+		Count:              req.GetFish().GetCount(),
 	})
 	if err != nil {
 		return nil, err
@@ -94,6 +95,7 @@ func (s *Server) AddFish(ctx context.Context, req *trackmyfishv1alpha1.AddFishRe
 			EcosystemLocation: rsp.EchosystemLocation,
 			Salinity:          rsp.Salinity,
 			Climate:           rsp.Climate,
+			Count:             rsp.Count,
 		},
 	}, nil
 }
@@ -120,6 +122,7 @@ func (s *Server) ListFish(ctx context.Context, req *trackmyfishv1alpha1.ListFish
 			EcosystemLocation: fish.EchosystemLocation,
 			Salinity:          fish.Salinity,
 			Climate:           fish.Climate,
+			Count:             fish.Count,
 		}
 	}
 
@@ -152,6 +155,7 @@ func (s *Server) DeleteFish(ctx context.Context, req *trackmyfishv1alpha1.Delete
 			EcosystemLocation: rsp.EchosystemLocation,
 			Salinity:          rsp.Salinity,
 			Climate:           rsp.Climate,
+			Count:             rsp.Count,
 		},
 	}, nil
 }
