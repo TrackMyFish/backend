@@ -6,10 +6,6 @@ server:
     enabled: true
     port: 8443
 
-  frontend:
-    enabled: true
-    port: 80
-
 db:
   host: localhost
   port: 15432

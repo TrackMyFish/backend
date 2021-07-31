@@ -3,6 +3,7 @@ module github.com/trackmyfish/backend
 go 1.16
 
 require (
+	github.com/go-chi/chi/v5 v5.0.3 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.5.0
 	github.com/jackc/pgproto3/v2 v2.1.0 // indirect
 	github.com/jackc/pgx/v4 v4.11.0
