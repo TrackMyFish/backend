@@ -101,7 +101,7 @@ func (d *Manager) InsertFish(ctx context.Context, fish Fish) (Fish, error) {
 func (d *Manager) GetFish(ctx context.Context) ([]Fish, error) {
 	fish := make([]Fish, 0)
 
-	rows, err := d.pool.Query(ctx, "SELECT id, genus, species, common_name, name, color, gender, purchase_date, ecosystem_name, ecosystem_type, ecosystem_location, salinity, climate FROM fish")
+	rows, err := d.pool.Query(ctx, "SELECT id, genus, species, common_name, name, color, gender, purchase_date, ecosystem_name, ecosystem_type, ecosystem_location, salinity, climate, count FROM fish")
 	if err != nil {
 		return fish, errors.Wrap(err, "unable to get fish")
 	}
@@ -110,7 +110,7 @@ func (d *Manager) GetFish(ctx context.Context) ([]Fish, error) {
 	for rows.Next() {
 		f := Fish{}
 
-		if err := rows.Scan(&f.ID, &f.Genus, &f.Species, &f.CommonName, &f.Name, &f.Color, &f.Gender, &f.PurchaseDate, &f.EcosystemName, &f.EcosystemType, &f.EchosystemLocation, &f.Salinity, &f.Climate); err != nil {
+		if err := rows.Scan(&f.ID, &f.Genus, &f.Species, &f.CommonName, &f.Name, &f.Color, &f.Gender, &f.PurchaseDate, &f.EcosystemName, &f.EcosystemType, &f.EchosystemLocation, &f.Salinity, &f.Climate, &f.Count); err != nil {
 			return nil, errors.Wrap(err, "unable to scan row")
 		}
 
