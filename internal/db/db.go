@@ -45,6 +45,7 @@ type Fish struct {
 	EchosystemLocation string
 	Salinity           string
 	Climate            string
+	Count              int32
 }
 
 func New(c Config) (*Manager, error) {
@@ -83,9 +84,9 @@ func (d *Manager) InsertFish(ctx context.Context, fish Fish) (Fish, error) {
 
 	err := d.pool.QueryRow(
 		ctx,
-		"INSERT INTO fish(genus, species, common_name, name, color, gender, purchase_date, ecosystem_name, ecosystem_type, ecosystem_location, salinity, climate) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id, genus, species, common_name, name, color, gender, purchase_date, ecosystem_name, ecosystem_type, ecosystem_location, salinity, climate",
-		fish.Genus, fish.Species, fish.CommonName, fish.Name, fish.Color, fish.Gender, fish.PurchaseDate, fish.EcosystemName, fish.EcosystemType, fish.EchosystemLocation, fish.Salinity, fish.Climate,
-	).Scan(&f.ID, &f.Genus, &f.Species, &f.CommonName, &f.Name, &f.Color, &f.Gender, &f.PurchaseDate, &f.EcosystemName, &f.EcosystemType, &f.EchosystemLocation, &f.Salinity, &f.Climate)
+		"INSERT INTO fish(genus, species, common_name, name, color, gender, purchase_date, ecosystem_name, ecosystem_type, ecosystem_location, salinity, climate, count) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id, genus, species, common_name, name, color, gender, purchase_date, ecosystem_name, ecosystem_type, ecosystem_location, salinity, climate, count",
+		fish.Genus, fish.Species, fish.CommonName, fish.Name, fish.Color, fish.Gender, fish.PurchaseDate, fish.EcosystemName, fish.EcosystemType, fish.EchosystemLocation, fish.Salinity, fish.Climate, fish.Count,
+	).Scan(&f.ID, &f.Genus, &f.Species, &f.CommonName, &f.Name, &f.Color, &f.Gender, &f.PurchaseDate, &f.EcosystemName, &f.EcosystemType, &f.EchosystemLocation, &f.Salinity, &f.Climate, &f.Count)
 	if err != nil {
 		return f, errors.Wrap(err, "unable to add fish")
 	}

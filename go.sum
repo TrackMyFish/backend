@@ -526,6 +526,10 @@ github.com/trackmyfish/proto v0.0.0-20210726184923-add796cb0524 h1:bNwc/e1vJRNXN
 github.com/trackmyfish/proto v0.0.0-20210726184923-add796cb0524/go.mod h1:bQM4fmj1iATxjqt9kVnREkph/rbqbaDP9T4dBn2dQYQ=
 github.com/trackmyfish/proto v0.0.2 h1:21W6JR3oRbk7dIukJA4vENyKq9MojKOIpqD8I0zhkxU=
 github.com/trackmyfish/proto v0.0.2/go.mod h1:bQM4fmj1iATxjqt9kVnREkph/rbqbaDP9T4dBn2dQYQ=
+github.com/trackmyfish/proto v0.0.3 h1:mFWX/nN3n+LVfm9DHl2IFCzM8TmDQFr6JcE9iNq4uuE=
+github.com/trackmyfish/proto v0.0.3/go.mod h1:bQM4fmj1iATxjqt9kVnREkph/rbqbaDP9T4dBn2dQYQ=
+github.com/trackmyfish/proto v0.0.4 h1:8TESlqBHUMcGipVuhb27oQbmzTurq0jy93rqUxio54c=
+github.com/trackmyfish/proto v0.0.4/go.mod h1:bQM4fmj1iATxjqt9kVnREkph/rbqbaDP9T4dBn2dQYQ=
 github.com/twitchtv/twirp v7.1.0+incompatible/go.mod h1:RRJoFSAmTEh2weEqWtpPE3vFK5YBhA6bqp2l1kfCC5A=
 github.com/ugorji/go v1.1.7/go.mod h1:kZn38zHttfInRq0xu/PH0az30d+z6vm202qpg1oXVMw=
 github.com/ugorji/go/codec v1.1.7/go.mod h1:Ax+UKWsSmolVDwsd+7N3ZtXu+yMGCf907BLYF3GoBXY=

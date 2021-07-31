@@ -12,7 +12,7 @@ require (
 	github.com/shopspring/decimal v0.0.0-20200419222939-1884f454f8ea // indirect
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/viper v1.8.1
-	github.com/trackmyfish/proto v0.0.2
+	github.com/trackmyfish/proto v0.0.4
 	golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a // indirect
 	google.golang.org/grpc v1.39.0
 )
