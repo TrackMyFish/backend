@@ -43,6 +43,20 @@ curl -H "Content-Type: application/json" -X GET localhost:8443/v1alpha1/fish
 curl -H "Content-Type: application/json" -X DELETE localhost:8443/v1alpha1/fish/1
 ```
 
+# Running the Dockerfile
+
+## Build the image
+
+```
+docker build -f ./Dockerfile -t trackmyfish .
+```
+
+## Run the image
+
+```
+docker run -p 8443:8443 -v /path/to/config:/config trackmyfish
+```
+
 # ToDo
 
 * [ ] Write Tests

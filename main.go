@@ -8,10 +8,9 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"time"
+	"strings"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/rs/cors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
@@ -22,7 +21,7 @@ import (
 )
 
 //go:embed build
-var frontend embed.FS
+var feStatic embed.FS
 
 func init() {
 	// Log as JSON instead of the default ASCII formatter.
@@ -41,12 +40,18 @@ func main() {
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
 
+	// Custom Config file
+	viper.SetConfigName("config")
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath("/config")
+
+	// Merge config
+	viper.MergeInConfig()
+
 	// Server defaults
 	viper.SetDefault("server.port", 8080)
 	viper.SetDefault("server.httpProxy.enabled", false)
 	viper.SetDefault("server.httpProxy.port", 8443)
-	viper.SetDefault("server.frontend.enabled", false)
-	viper.SetDefault("server.frontend.port", 80)
 
 	// DB defaults
 	viper.SetDefault("db.host", "localhost")
@@ -65,9 +70,6 @@ func main() {
 		httpProxyEnabled = viper.GetBool("server.httpProxy.enabled")
 		httpProxyPort    = viper.GetInt("server.httpProxy.port")
 
-		frontendEnabled = viper.GetBool("server.frontend.enabled")
-		frontendPort    = viper.GetInt("server.frontend.port")
-
 		dbHost     = viper.GetString("db.host")
 		dbPort     = viper.GetInt("db.port")
 		dbUsername = viper.GetString("db.username")
@@ -79,8 +81,6 @@ func main() {
 		"Server Port":        port,
 		"HTTP Proxy Enabled": httpProxyEnabled,
 		"HTTP Proxy Port":    httpProxyPort,
-		"Frontend Enabled":   frontendEnabled,
-		"Frontend Port":      frontendPort,
 		"Database Name":      dbName,
 		"Database Host":      dbHost,
 		"Database Port":      dbPort,
@@ -106,10 +106,6 @@ func main() {
 		go httpProxyServer(httpProxyPort, addr)
 	}
 
-	if frontendEnabled {
-		go frontendServer(frontendPort)
-	}
-
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		logrus.Fatal(err, "Failed to create listener")
@@ -122,31 +118,6 @@ func main() {
 	if err := gServer.Serve(listener); err != nil {
 		logrus.Fatal(err, "Failed to start server")
 	}
-}
-
-func frontendServer(port int) {
-	logrus.WithFields(logrus.Fields{
-		"port": port,
-	}).Info("Serving frontend")
-
-	h := http.NewServeMux()
-	sch, err := frontendHandler()
-	if err != nil {
-		logrus.Fatal(err, "unable to initialize frontend handler")
-	}
-
-	h.Handle("/", sch)
-
-	c := cors.New(cors.Options{
-		AllowedOrigins: []string{"*"},
-		AllowedHeaders: []string{"*"},
-		AllowedMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
-		MaxAge:         int(time.Hour * 24),
-	})
-
-	mux := c.Handler(h)
-
-	logrus.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), mux), "Failed to serve frontend")
 }
 
 // httpProxyServer starts a new http server listening on the specified port, proxying
@@ -163,23 +134,28 @@ func httpProxyServer(port int, grpcAddr string) {
 		logrus.Fatal(err, "Failed to register http handler")
 	}
 
-	// Create a handler for our multiplexer.
-	h := Handler(mux)
+	r := http.NewServeMux()
 
-	c := cors.New(cors.Options{
-		AllowedOrigins: []string{"*"},
-		AllowedHeaders: []string{"*"},
-		AllowedMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
-		MaxAge:         int(time.Hour * 24),
+	r.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
+		// gateway is generated to match for /v1alpha1/ and not /api/v1alpha1
+		// we could update the gateway proto to match for /api/v1alpha1 but
+		// it shouldn't care where it's mounted to, hence we just rewrite the path here
+		r.URL.Path = strings.Replace(r.URL.Path, "/api", "", -1)
+		mux.ServeHTTP(w, r)
 	})
 
-	h = c.Handler(h)
+	sch, err := buildHandler()
+	if err != nil {
+		logrus.Fatal(err, "unable to initialize build handler")
+	}
+
+	r.Handle("/", sch)
 
 	logrus.WithFields(logrus.Fields{
 		"port": port,
 	}).Info("Starting http proxy server")
 
-	logrus.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), h), "Failed to start http proxy server")
+	logrus.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), r), "Failed to start http proxy server")
 }
 
 func Handler(mux *runtime.ServeMux) http.Handler {
@@ -196,8 +172,8 @@ func Handler(mux *runtime.ServeMux) http.Handler {
 	}(mux)
 }
 
-func frontendHandler() (http.Handler, error) {
-	fsys := fs.FS(frontend)
+func buildHandler() (http.Handler, error) {
+	fsys := fs.FS(feStatic)
 
 	sc, err := fs.Sub(fsys, "build")
 	if err != nil {
