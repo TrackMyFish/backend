@@ -57,6 +57,16 @@ docker build -f ./Dockerfile -t trackmyfish .
 docker run -p 8443:8443 -v /path/to/config:/config trackmyfish
 ```
 
+## Publish the docker image
+
+```
+docker login
+
+docker tag trackmyfish simondrake/trackmyfish:v1alpha1
+
+docker push simondrake/trackmyfish:v1alpha1
+```
+
 # ToDo
 
 * [ ] Write Tests
