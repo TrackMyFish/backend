@@ -8,7 +8,7 @@ server:
 
 db:
   host: localhost
-  port: 15432
+  port: 5432
   username: trackmyfish
   password: supersecretpassword
   name: trackmyfish

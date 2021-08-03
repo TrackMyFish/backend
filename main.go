@@ -35,15 +35,25 @@ func init() {
 }
 
 func main() {
-	// Config file
+	// Config files
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
 
-	// Custom Config file
+	// Custom config file mapped as a volume when using Docker
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath("/config")
+
+	// Environment Variables
+	viper.BindEnv("server.port", "TMF_SERVER_PORT")
+	viper.BindEnv("server.httpProxy.enabled", "TMF_HTTP_PROXY_ENABLED")
+	viper.BindEnv("server.httpProxy.port", "TMF_HTTP_PROXY_PORT")
+	viper.BindEnv("db.host", "TMF_DB_HOST")
+	viper.BindEnv("db.port", "TMF_DB_PORT")
+	viper.BindEnv("db.username", "TMF_DB_USERNAME")
+	viper.BindEnv("db.password", "TMF_DB_PASSWORD")
+	viper.BindEnv("db.name", "TMF_DB_NAME")
 
 	// Merge config
 	viper.MergeInConfig()
@@ -60,9 +70,14 @@ func main() {
 	viper.SetDefault("db.password", "")
 	viper.SetDefault("db.name", "trackmyfish")
 
-	err := viper.ReadInConfig()
-	if err != nil {
-		logrus.Fatal("unable to read config")
+	if err := viper.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			// Config file not found; ignore as we use defaults/environment variables
+			// and if anything required isn't set (e.g. db password) we'll error later on
+		} else {
+			// Config file was found but another error was produced
+			logrus.Fatal("unable to read config: ", err)
+		}
 	}
 
 	var (
