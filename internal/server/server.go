@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -12,7 +13,8 @@ import (
 
 // Server is the implementation of the trackmyfishv1alpha1.TrackMyFishServiceServer
 type Server struct {
-	dbManager *db.Manager
+	dbManager      *db.Manager
+	fishbaseClient *fishbase.Client
 }
 
 type Config struct {
@@ -35,13 +37,16 @@ func New(c Config) (*Server, error) {
 		return nil, err
 	}
 
+	fc := fishbase.New(http.DefaultClient)
+
 	return &Server{
-		dbManager: dbManager,
+		dbManager:      dbManager,
+		fishbaseClient: fc,
 	}, nil
 }
 
 func (s *Server) Heartbeat(ctx context.Context, req *trackmyfishv1alpha1.HeartbeatRequest) (*trackmyfishv1alpha1.HeartbeatResponse, error) {
-	d, err := fishbase.GetHeartbeat()
+	d, err := s.fishbaseClient.GetHeartbeat()
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to get heartbeat information")
 	}
