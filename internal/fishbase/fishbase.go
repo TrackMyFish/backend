@@ -64,7 +64,25 @@ type Fish struct {
 	Ecosystem Ecosystem
 }
 
-func GetHeartbeat() (Heartbeat, error) {
+type HTTPClient interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
+type Client struct {
+	httpClient HTTPClient
+}
+
+func New(client HTTPClient) *Client {
+	if client == nil {
+		client = http.DefaultClient
+	}
+
+	return &Client{
+		httpClient: client,
+	}
+}
+
+func (c *Client) GetHeartbeat() (Heartbeat, error) {
 	h := Heartbeat{}
 
 	req, err := http.NewRequest("GET", baseURL+"heartbeat", nil)
@@ -72,7 +90,7 @@ func GetHeartbeat() (Heartbeat, error) {
 		return h, errors.Wrap(err, "unable to create request")
 	}
 
-	rsp, err := http.DefaultClient.Do(req)
+	rsp, err := c.httpClient.Do(req)
 	if err != nil {
 		return h, errors.Wrap(err, "unable to query fishbase")
 	}
