@@ -142,9 +142,6 @@ func (s *Server) DeleteFish(ctx context.Context, req *trackmyfishv1alpha1.Delete
 		return nil, err
 	}
 
-	// TODO - change proto and return the deleted fish
-	_ = rsp
-
 	return &trackmyfishv1alpha1.DeleteFishResponse{
 		Fish: &trackmyfishv1alpha1.Fish{
 			Id:                rsp.ID,
@@ -161,6 +158,83 @@ func (s *Server) DeleteFish(ctx context.Context, req *trackmyfishv1alpha1.Delete
 			Salinity:          rsp.Salinity,
 			Climate:           rsp.Climate,
 			Count:             rsp.Count,
+		},
+	}, nil
+}
+
+func (s *Server) AddTankStatistic(ctx context.Context, req *trackmyfishv1alpha1.AddTankStatisticRequest) (*trackmyfishv1alpha1.AddTankStatisticResponse, error) {
+	rsp, err := s.dbManager.InsertTankStatistic(ctx, db.TankStatistic{
+		TestDate:  req.GetTankStatistic().GetTestDate(),
+		PH:        req.GetTankStatistic().GetPH(),
+		GH:        req.GetTankStatistic().GetGH(),
+		KH:        req.GetTankStatistic().GetKH(),
+		Ammonia:   req.GetTankStatistic().GetAmmonia(),
+		Nitrite:   req.GetTankStatistic().GetNitrite(),
+		Nitrate:   req.GetTankStatistic().GetNitrate(),
+		Phosphate: req.GetTankStatistic().GetPhosphate(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &trackmyfishv1alpha1.AddTankStatisticResponse{
+		TankStatistic: &trackmyfishv1alpha1.TankStatistic{
+			Id:        rsp.ID,
+			TestDate:  rsp.TestDate,
+			PH:        rsp.PH,
+			GH:        rsp.GH,
+			KH:        rsp.KH,
+			Ammonia:   rsp.Ammonia,
+			Nitrite:   rsp.Nitrite,
+			Nitrate:   rsp.Nitrate,
+			Phosphate: rsp.Phosphate,
+		},
+	}, nil
+}
+
+func (s *Server) ListTankStatistics(ctx context.Context, req *trackmyfishv1alpha1.ListTankStatisticsRequest) (*trackmyfishv1alpha1.ListTankStatisticsResponse, error) {
+	rsp, err := s.dbManager.GetTankStatistics(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to get tank statistics")
+	}
+
+	tankStats := make([]*trackmyfishv1alpha1.TankStatistic, len(rsp))
+	for i, ts := range rsp {
+		tankStats[i] = &trackmyfishv1alpha1.TankStatistic{
+			Id:        ts.ID,
+			TestDate:  ts.TestDate,
+			PH:        ts.PH,
+			GH:        ts.GH,
+			KH:        ts.KH,
+			Ammonia:   ts.Ammonia,
+			Nitrite:   ts.Nitrite,
+			Nitrate:   ts.Nitrate,
+			Phosphate: ts.Phosphate,
+		}
+	}
+
+	return &trackmyfishv1alpha1.ListTankStatisticsResponse{
+		TankStatistics: tankStats,
+	}, nil
+}
+
+func (s *Server) DeleteTankStatistic(ctx context.Context, req *trackmyfishv1alpha1.DeleteTankStatisticRequest) (*trackmyfishv1alpha1.DeleteTankStatisticResponse, error) {
+	rsp, err := s.dbManager.DeleteTankStatistic(ctx, req.GetId())
+	if err != nil {
+		return nil, err
+	}
+
+	return &trackmyfishv1alpha1.DeleteTankStatisticResponse{
+		TankStatistic: &trackmyfishv1alpha1.TankStatistic{
+			Id:        rsp.ID,
+			TestDate:  rsp.TestDate,
+			PH:        rsp.PH,
+			GH:        rsp.GH,
+			KH:        rsp.KH,
+			Ammonia:   rsp.Ammonia,
+			Nitrite:   rsp.Nitrite,
+			Nitrate:   rsp.Nitrate,
+			Phosphate: rsp.Phosphate,
 		},
 	}, nil
 }
