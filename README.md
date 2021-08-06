@@ -28,19 +28,37 @@ grpcurl -protoset <(cd ../proto; ../proto/.cache/Darwin/x86_64/bin/buf image bui
 ## Add Fish
 
 ```
-curl -H "Content-Type: application/json" -X POST localhost:8443/v1alpha1/fish -d '{"genus": "Pterophyllum", "species": "scalare", "commonName": "Angel Fish", "gender": "MALE"}'
+curl -H "Content-Type: application/json" -X POST localhost:8443/api/v1alpha1/fish -d '{"genus": "Pterophyllum", "species": "scalare", "commonName": "Angel Fish", "gender": "MALE"}'
 ```
 
 ## List Fish
 
 ```
-curl -H "Content-Type: application/json" -X GET localhost:8443/v1alpha1/fish
+curl -H "Content-Type: application/json" -X GET localhost:8443/api/v1alpha1/fish
 ```
 
 ## Delete Fish
 
 ```
-curl -H "Content-Type: application/json" -X DELETE localhost:8443/v1alpha1/fish/1
+curl -H "Content-Type: application/json" -X DELETE localhost:8443/api/v1alpha1/fish/1
+```
+
+## Add Tank Statistic
+
+```
+curl -H "Content-Type: application/json" -X POST localhost:8443/api/v1alpha1/tank/statistics -d '{"testDate": "2021/08/06 10:00", "ammonia": "2.0"}'
+```
+
+## List Tank Statistics
+
+```
+curl -H "Content-Type: application/json" -X GET localhost:8443/api/v1alpha1/tank/statistics
+```
+
+## Delete Tank Statistics
+
+```
+curl -H "Content-Type: application/json" -X DELETE localhost:8443/api/v1alpha1/tank/statistics/1
 ```
 
 # Running the Dockerfile
