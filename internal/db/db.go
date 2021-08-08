@@ -51,13 +51,13 @@ type Fish struct {
 type TankStatistic struct {
 	ID        int32
 	TestDate  string
-	PH        float32
-	GH        float32
-	KH        float32
-	Ammonia   float32
-	Nitrite   float32
-	Nitrate   float32
-	Phosphate float32
+	PH        *float32
+	GH        *float32
+	KH        *float32
+	Ammonia   *float32
+	Nitrite   *float32
+	Nitrate   *float32
+	Phosphate *float32
 }
 
 func New(c Config) (*Manager, error) {
@@ -164,9 +164,9 @@ func (d *Manager) InsertTankStatistic(ctx context.Context, tankStatistic TankSta
 
 	err := d.pool.QueryRow(
 		ctx,
-		"INSERT INTO tank_statistics(ph, gh, kh, ammonia, nitrite, nitrate, phosphate) VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING id, ph, gh, kh, ammonia, nitrite, nitrate, phosphate",
-		tankStatistic.PH, tankStatistic.GH, tankStatistic.KH, tankStatistic.Ammonia, tankStatistic.Nitrite, tankStatistic.Nitrate, tankStatistic.Phosphate,
-	).Scan(&ts.ID, &ts.PH, &ts.GH, &ts.KH, &ts.Ammonia, &ts.Nitrite, &ts.Nitrate, &ts.Phosphate)
+		"INSERT INTO tank_statistics(test_date, ph, gh, kh, ammonia, nitrite, nitrate, phosphate) VALUES($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, test_date, ph, gh, kh, ammonia, nitrite, nitrate, phosphate",
+		tankStatistic.TestDate, tankStatistic.PH, tankStatistic.GH, tankStatistic.KH, tankStatistic.Ammonia, tankStatistic.Nitrite, tankStatistic.Nitrate, tankStatistic.Phosphate,
+	).Scan(&ts.ID, &ts.TestDate, &ts.PH, &ts.GH, &ts.KH, &ts.Ammonia, &ts.Nitrite, &ts.Nitrate, &ts.Phosphate)
 	if err != nil {
 		return ts, errors.Wrap(err, "unable to add fish")
 	}
@@ -181,7 +181,7 @@ func (d *Manager) InsertTankStatistic(ctx context.Context, tankStatistic TankSta
 func (d *Manager) GetTankStatistics(ctx context.Context) ([]TankStatistic, error) {
 	tankStats := make([]TankStatistic, 0)
 
-	rows, err := d.pool.Query(ctx, "SELECT id, ph, gh, kh, ammonia, nitrite, nitrate, phosphate FROM tank_statistics")
+	rows, err := d.pool.Query(ctx, "SELECT id, test_date, ph, gh, kh, ammonia, nitrite, nitrate, phosphate FROM tank_statistics")
 	if err != nil {
 		return tankStats, errors.Wrap(err, "unable to get tank statistics")
 	}
@@ -190,7 +190,7 @@ func (d *Manager) GetTankStatistics(ctx context.Context) ([]TankStatistic, error
 	for rows.Next() {
 		ts := TankStatistic{}
 
-		if err := rows.Scan(&ts.ID, &ts.PH, &ts.GH, &ts.KH, &ts.Ammonia, &ts.Nitrite, &ts.Nitrate, &ts.Phosphate); err != nil {
+		if err := rows.Scan(&ts.ID, &ts.TestDate, &ts.PH, &ts.GH, &ts.KH, &ts.Ammonia, &ts.Nitrite, &ts.Nitrate, &ts.Phosphate); err != nil {
 			return nil, errors.Wrap(err, "unable to scan row")
 		}
 
@@ -213,9 +213,9 @@ func (d *Manager) DeleteTankStatistic(ctx context.Context, id int32) (TankStatis
 
 	err := d.pool.QueryRow(
 		ctx,
-		"DELETE FROM tank_statistics WHERE id=$1 RETURNING id, ph, gh, kh, ammonia, nitrite, nitrate, phosphate",
+		"DELETE FROM tank_statistics WHERE id=$1 RETURNING id, test_date, ph, gh, kh, ammonia, nitrite, nitrate, phosphate",
 		id,
-	).Scan(&ts.ID, &ts.PH, &ts.GH, &ts.KH, &ts.Ammonia, &ts.Nitrite, &ts.Nitrate, &ts.Phosphate)
+	).Scan(&ts.ID, &ts.TestDate, &ts.PH, &ts.GH, &ts.KH, &ts.Ammonia, &ts.Nitrite, &ts.Nitrate, &ts.Phosphate)
 	if err != nil {
 		return ts, errors.Wrap(err, "unable to delete tank statistic")
 	}

@@ -163,33 +163,84 @@ func (s *Server) DeleteFish(ctx context.Context, req *trackmyfishv1alpha1.Delete
 }
 
 func (s *Server) AddTankStatistic(ctx context.Context, req *trackmyfishv1alpha1.AddTankStatisticRequest) (*trackmyfishv1alpha1.AddTankStatisticResponse, error) {
-	rsp, err := s.dbManager.InsertTankStatistic(ctx, db.TankStatistic{
-		TestDate:  req.GetTankStatistic().GetTestDate(),
-		PH:        req.GetTankStatistic().GetPH(),
-		GH:        req.GetTankStatistic().GetGH(),
-		KH:        req.GetTankStatistic().GetKH(),
-		Ammonia:   req.GetTankStatistic().GetAmmonia(),
-		Nitrite:   req.GetTankStatistic().GetNitrite(),
-		Nitrate:   req.GetTankStatistic().GetNitrate(),
-		Phosphate: req.GetTankStatistic().GetPhosphate(),
-	})
+	ts := db.TankStatistic{
+		TestDate: req.GetTankStatistic().GetTestDate(),
+	}
+
+	if req.GetTankStatistic().GetOptionalPh() != nil {
+		ph := req.GetTankStatistic().GetPh()
+		ts.PH = &ph
+	}
+
+	if req.GetTankStatistic().GetOptionalGh() != nil {
+		gh := req.GetTankStatistic().GetGh()
+		ts.GH = &gh
+	}
+
+	if req.GetTankStatistic().GetOptionalKh() != nil {
+		kh := req.GetTankStatistic().GetKh()
+		ts.KH = &kh
+	}
+
+	if req.GetTankStatistic().GetOptionalAmmonia() != nil {
+		a := req.GetTankStatistic().GetAmmonia()
+		ts.Ammonia = &a
+	}
+
+	if req.GetTankStatistic().GetOptionalNitrite() != nil {
+		n := req.GetTankStatistic().GetNitrite()
+		ts.Nitrite = &n
+	}
+
+	if req.GetTankStatistic().GetOptionalNitrate() != nil {
+		n := req.GetTankStatistic().GetNitrate()
+		ts.Nitrate = &n
+	}
+
+	if req.GetTankStatistic().GetOptionalPhosphate() != nil {
+		p := req.GetTankStatistic().GetPhosphate()
+		ts.Phosphate = &p
+	}
+
+	rsp, err := s.dbManager.InsertTankStatistic(ctx, ts)
 	if err != nil {
 		return nil, err
 	}
 
-	return &trackmyfishv1alpha1.AddTankStatisticResponse{
-		TankStatistic: &trackmyfishv1alpha1.TankStatistic{
-			Id:        rsp.ID,
-			TestDate:  rsp.TestDate,
-			PH:        rsp.PH,
-			GH:        rsp.GH,
-			KH:        rsp.KH,
-			Ammonia:   rsp.Ammonia,
-			Nitrite:   rsp.Nitrite,
-			Nitrate:   rsp.Nitrate,
-			Phosphate: rsp.Phosphate,
-		},
-	}, nil
+	tstat := &trackmyfishv1alpha1.TankStatistic{
+		Id:       rsp.ID,
+		TestDate: rsp.TestDate,
+	}
+
+	if rsp.PH != nil {
+		tstat.OptionalPh = &trackmyfishv1alpha1.TankStatistic_Ph{Ph: *rsp.PH}
+	}
+
+	if rsp.GH != nil {
+		tstat.OptionalGh = &trackmyfishv1alpha1.TankStatistic_Gh{Gh: *rsp.GH}
+	}
+
+	if rsp.KH != nil {
+		tstat.OptionalKh = &trackmyfishv1alpha1.TankStatistic_Kh{Kh: *rsp.KH}
+	}
+
+	if rsp.Ammonia != nil {
+		tstat.OptionalAmmonia = &trackmyfishv1alpha1.TankStatistic_Ammonia{Ammonia: *rsp.Ammonia}
+	}
+
+	if rsp.Nitrite != nil {
+		tstat.OptionalNitrite = &trackmyfishv1alpha1.TankStatistic_Nitrite{Nitrite: *rsp.Nitrite}
+	}
+
+	if rsp.Nitrate != nil {
+		tstat.OptionalNitrate = &trackmyfishv1alpha1.TankStatistic_Nitrate{Nitrate: *rsp.Nitrate}
+	}
+
+	if rsp.Phosphate != nil {
+		tstat.OptionalPhosphate = &trackmyfishv1alpha1.TankStatistic_Phosphate{Phosphate: *rsp.Phosphate}
+	}
+
+	return &trackmyfishv1alpha1.AddTankStatisticResponse{TankStatistic: tstat}, nil
 }
 
 func (s *Server) ListTankStatistics(ctx context.Context, req *trackmyfishv1alpha1.ListTankStatisticsRequest) (*trackmyfishv1alpha1.ListTankStatisticsResponse, error) {
@@ -200,17 +251,40 @@ func (s *Server) ListTankStatistics(ctx context.Context, req *trackmyfishv1alpha
 
 	tankStats := make([]*trackmyfishv1alpha1.TankStatistic, len(rsp))
 	for i, ts := range rsp {
-		tankStats[i] = &trackmyfishv1alpha1.TankStatistic{
-			Id:        ts.ID,
-			TestDate:  ts.TestDate,
-			PH:        ts.PH,
-			GH:        ts.GH,
-			KH:        ts.KH,
-			Ammonia:   ts.Ammonia,
-			Nitrite:   ts.Nitrite,
-			Nitrate:   ts.Nitrate,
-			Phosphate: ts.Phosphate,
+		tstat := &trackmyfishv1alpha1.TankStatistic{
+			Id:       ts.ID,
+			TestDate: ts.TestDate,
 		}
+
+		if ts.PH != nil {
+			tstat.OptionalPh = &trackmyfishv1alpha1.TankStatistic_Ph{Ph: *ts.PH}
+		}
+
+		if ts.GH != nil {
+			tstat.OptionalGh = &trackmyfishv1alpha1.TankStatistic_Gh{Gh: *ts.GH}
+		}
+
+		if ts.KH != nil {
+			tstat.OptionalKh = &trackmyfishv1alpha1.TankStatistic_Kh{Kh: *ts.KH}
+		}
+
+		if ts.Ammonia != nil {
+			tstat.OptionalAmmonia = &trackmyfishv1alpha1.TankStatistic_Ammonia{Ammonia: *ts.Ammonia}
+		}
+
+		if ts.Nitrite != nil {
+			tstat.OptionalNitrite = &trackmyfishv1alpha1.TankStatistic_Nitrite{Nitrite: *ts.Nitrite}
+		}
+
+		if ts.Nitrate != nil {
+			tstat.OptionalNitrate = &trackmyfishv1alpha1.TankStatistic_Nitrate{Nitrate: *ts.Nitrate}
+		}
+
+		if ts.Phosphate != nil {
+			tstat.OptionalPhosphate = &trackmyfishv1alpha1.TankStatistic_Phosphate{Phosphate: *ts.Phosphate}
+		}
+
+		tankStats[i] = tstat
 	}
 
 	return &trackmyfishv1alpha1.ListTankStatisticsResponse{
@@ -224,18 +298,41 @@ func (s *Server) DeleteTankStatistic(ctx context.Context, req *trackmyfishv1alph
 		return nil, err
 	}
 
+	tstat := &trackmyfishv1alpha1.TankStatistic{
+		Id:       rsp.ID,
+		TestDate: rsp.TestDate,
+	}
+
+	if rsp.PH != nil {
+		tstat.OptionalPh = &trackmyfishv1alpha1.TankStatistic_Ph{Ph: *rsp.PH}
+	}
+
+	if rsp.GH != nil {
+		tstat.OptionalGh = &trackmyfishv1alpha1.TankStatistic_Gh{Gh: *rsp.GH}
+	}
+
+	if rsp.KH != nil {
+		tstat.OptionalKh = &trackmyfishv1alpha1.TankStatistic_Kh{Kh: *rsp.KH}
+	}
+
+	if rsp.Ammonia != nil {
+		tstat.OptionalAmmonia = &trackmyfishv1alpha1.TankStatistic_Ammonia{Ammonia: *rsp.Ammonia}
+	}
+
+	if rsp.Nitrite != nil {
+		tstat.OptionalNitrite = &trackmyfishv1alpha1.TankStatistic_Nitrite{Nitrite: *rsp.Nitrite}
+	}
+
+	if rsp.Nitrate != nil {
+		tstat.OptionalNitrate = &trackmyfishv1alpha1.TankStatistic_Nitrate{Nitrate: *rsp.Nitrate}
+	}
+
+	if rsp.Phosphate != nil {
+		tstat.OptionalPhosphate = &trackmyfishv1alpha1.TankStatistic_Phosphate{Phosphate: *rsp.Phosphate}
+	}
+
 	return &trackmyfishv1alpha1.DeleteTankStatisticResponse{
-		TankStatistic: &trackmyfishv1alpha1.TankStatistic{
-			Id:        rsp.ID,
-			TestDate:  rsp.TestDate,
-			PH:        rsp.PH,
-			GH:        rsp.GH,
-			KH:        rsp.KH,
-			Ammonia:   rsp.Ammonia,
-			Nitrite:   rsp.Nitrite,
-			Nitrate:   rsp.Nitrate,
-			Phosphate: rsp.Phosphate,
-		},
+		TankStatistic: tstat,
 	}, nil
 }
 
