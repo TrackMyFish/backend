@@ -7,6 +7,7 @@ go 1.16
 
 require (
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
+	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.5.0
 	github.com/jackc/pgproto3/v2 v2.1.0 // indirect
 	github.com/jackc/pgx/v4 v4.11.0

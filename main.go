@@ -143,9 +143,9 @@ func httpProxyServer(port int, grpcAddr string) {
 	defer cancel()
 
 	// Register gRPC server endpoint
-	mux := runtime.NewServeMux()
+	grpcMux := runtime.NewServeMux()
 	opts := []grpc.DialOption{grpc.WithInsecure()}
-	if err := trackmyfishv1alpha1.RegisterTrackMyFishServiceHandlerFromEndpoint(ctx, mux, grpcAddr, opts); err != nil {
+	if err := trackmyfishv1alpha1.RegisterTrackMyFishServiceHandlerFromEndpoint(ctx, grpcMux, grpcAddr, opts); err != nil {
 		logrus.Fatal(err, "Failed to register http handler")
 	}
 
@@ -156,14 +156,13 @@ func httpProxyServer(port int, grpcAddr string) {
 		// we could update the gateway proto to match for /api/v1alpha1 but
 		// it shouldn't care where it's mounted to, hence we just rewrite the path here
 		r.URL.Path = strings.Replace(r.URL.Path, "/api", "", -1)
-		mux.ServeHTTP(w, r)
+		grpcMux.ServeHTTP(w, r)
 	})
 
 	sch, err := buildHandler()
 	if err != nil {
 		logrus.Fatal(err, "unable to initialize build handler")
 	}
-
 	r.Handle("/", sch)
 
 	logrus.WithFields(logrus.Fields{
