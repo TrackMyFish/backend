@@ -34,6 +34,12 @@ func init() {
 	logrus.SetLevel(logrus.InfoLevel)
 }
 
+func handleBindEnvErr(err error) {
+	if err != nil {
+		logrus.Fatalf("unable to bind viper key to environment variable: '%+v'", err)
+	}
+}
+
 func main() {
 	// Config files
 	viper.SetConfigName("config")
@@ -46,17 +52,19 @@ func main() {
 	viper.AddConfigPath("/config")
 
 	// Environment Variables
-	viper.BindEnv("server.port", "TMF_SERVER_PORT")
-	viper.BindEnv("server.httpProxy.enabled", "TMF_HTTP_PROXY_ENABLED")
-	viper.BindEnv("server.httpProxy.port", "TMF_HTTP_PROXY_PORT")
-	viper.BindEnv("db.host", "TMF_DB_HOST")
-	viper.BindEnv("db.port", "TMF_DB_PORT")
-	viper.BindEnv("db.username", "TMF_DB_USERNAME")
-	viper.BindEnv("db.password", "TMF_DB_PASSWORD")
-	viper.BindEnv("db.name", "TMF_DB_NAME")
+	handleBindEnvErr(viper.BindEnv("server.port", "TMF_SERVER_PORT"))
+	handleBindEnvErr(viper.BindEnv("server.httpProxy.enabled", "TMF_HTTP_PROXY_ENABLED"))
+	handleBindEnvErr(viper.BindEnv("server.httpProxy.port", "TMF_HTTP_PROXY_PORT"))
+	handleBindEnvErr(viper.BindEnv("db.host", "TMF_DB_HOST"))
+	handleBindEnvErr(viper.BindEnv("db.port", "TMF_DB_PORT"))
+	handleBindEnvErr(viper.BindEnv("db.username", "TMF_DB_USERNAME"))
+	handleBindEnvErr(viper.BindEnv("db.password", "TMF_DB_PASSWORD"))
+	handleBindEnvErr(viper.BindEnv("db.name", "TMF_DB_NAME"))
 
 	// Merge config
-	viper.MergeInConfig()
+	if err := viper.MergeInConfig(); err != nil {
+		logrus.Fatalf("unable to merge in config: '%+v'", err)
+	}
 
 	// Server defaults
 	viper.SetDefault("server.port", 8080)
