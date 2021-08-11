@@ -63,7 +63,13 @@ func main() {
 
 	// Merge config
 	if err := viper.MergeInConfig(); err != nil {
-		logrus.Fatalf("unable to merge in config: '%+v'", err)
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			// Config file not found; ignore as we use defaults/environment variables
+			// and if anything required isn't set (e.g. db password) we'll error later on
+		} else {
+			// Config file was found but another error was produced
+			logrus.Fatalf("unable to merge in config: '%+v'", err)
+		}
 	}
 
 	// Server defaults
