@@ -32,20 +32,13 @@ func (c *ErrNotFound) Error() string {
 }
 
 type Fish struct {
-	ID                 int32
-	Genus              string
-	Species            string
-	CommonName         string
-	Name               string
-	Color              string
-	Gender             string
-	PurchaseDate       string
-	EcosystemName      string
-	EcosystemType      string
-	EchosystemLocation string
-	Salinity           string
-	Climate            string
-	Count              int32
+	ID           int32
+	Type         string
+	Subtype      string
+	Color        string
+	Gender       string
+	PurchaseDate string
+	Count        int32
 }
 
 type TankStatistic struct {
@@ -96,9 +89,9 @@ func (d *Manager) InsertFish(ctx context.Context, fish Fish) (Fish, error) {
 
 	err := d.pool.QueryRow(
 		ctx,
-		"INSERT INTO fish(genus, species, common_name, name, color, gender, purchase_date, ecosystem_name, ecosystem_type, ecosystem_location, salinity, climate, count) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id, genus, species, common_name, name, color, gender, purchase_date, ecosystem_name, ecosystem_type, ecosystem_location, salinity, climate, count",
-		fish.Genus, fish.Species, fish.CommonName, fish.Name, fish.Color, fish.Gender, fish.PurchaseDate, fish.EcosystemName, fish.EcosystemType, fish.EchosystemLocation, fish.Salinity, fish.Climate, fish.Count,
-	).Scan(&f.ID, &f.Genus, &f.Species, &f.CommonName, &f.Name, &f.Color, &f.Gender, &f.PurchaseDate, &f.EcosystemName, &f.EcosystemType, &f.EchosystemLocation, &f.Salinity, &f.Climate, &f.Count)
+		"INSERT INTO fish(type, subtype, color, gender, purchase_date, count) VALUES($1, $2, $3, $4, $5, $6) RETURNING id, type, subtype, color, gender, purchase_date, count",
+		fish.Type, fish.Subtype, fish.Color, fish.Gender, fish.PurchaseDate, fish.Count,
+	).Scan(&f.ID, &f.Type, &f.Subtype, &f.Color, &f.Gender, &f.PurchaseDate, &f.Count)
 	if err != nil {
 		return f, errors.Wrap(err, "unable to add fish")
 	}
@@ -113,7 +106,7 @@ func (d *Manager) InsertFish(ctx context.Context, fish Fish) (Fish, error) {
 func (d *Manager) GetFish(ctx context.Context) ([]Fish, error) {
 	fish := make([]Fish, 0)
 
-	rows, err := d.pool.Query(ctx, "SELECT id, genus, species, common_name, name, color, gender, purchase_date, ecosystem_name, ecosystem_type, ecosystem_location, salinity, climate, count FROM fish")
+	rows, err := d.pool.Query(ctx, "SELECT id, type, subtype, color, gender, purchase_date, count FROM fish")
 	if err != nil {
 		return fish, errors.Wrap(err, "unable to get fish")
 	}
@@ -122,7 +115,7 @@ func (d *Manager) GetFish(ctx context.Context) ([]Fish, error) {
 	for rows.Next() {
 		f := Fish{}
 
-		if err := rows.Scan(&f.ID, &f.Genus, &f.Species, &f.CommonName, &f.Name, &f.Color, &f.Gender, &f.PurchaseDate, &f.EcosystemName, &f.EcosystemType, &f.EchosystemLocation, &f.Salinity, &f.Climate, &f.Count); err != nil {
+		if err := rows.Scan(&f.ID, &f.Type, &f.Subtype, &f.Color, &f.Gender, &f.PurchaseDate, &f.Count); err != nil {
 			return nil, errors.Wrap(err, "unable to scan row")
 		}
 
@@ -145,9 +138,9 @@ func (d *Manager) DeleteFish(ctx context.Context, id int32) (Fish, error) {
 
 	err := d.pool.QueryRow(
 		ctx,
-		"DELETE FROM fish WHERE id=$1 RETURNING id, genus, species, common_name, name, color, gender, purchase_date, ecosystem_name, ecosystem_type, ecosystem_location, salinity, climate",
+		"DELETE FROM fish WHERE id=$1 RETURNING id, type, subtype, color, gender, purchase_date, count",
 		id,
-	).Scan(&f.ID, &f.Genus, &f.Species, &f.CommonName, &f.Name, &f.Color, &f.Gender, &f.PurchaseDate, &f.EcosystemName, &f.EcosystemType, &f.EchosystemLocation, &f.Salinity, &f.Climate)
+	).Scan(&f.ID, &f.Type, &f.Subtype, &f.Color, &f.Gender, &f.PurchaseDate, &f.Count)
 	if err != nil {
 		return f, errors.Wrap(err, "unable to delete fish")
 	}

@@ -2,19 +2,16 @@ package server
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/trackmyfish/backend/internal/db"
-	"github.com/trackmyfish/backend/internal/fishbase"
 	trackmyfishv1alpha1 "github.com/trackmyfish/proto/trackmyfish/v1alpha1"
 )
 
 // Server is the implementation of the trackmyfishv1alpha1.TrackMyFishServiceServer
 type Server struct {
-	dbManager      *db.Manager
-	fishbaseClient *fishbase.Client
+	dbManager *db.Manager
 }
 
 type Config struct {
@@ -37,49 +34,23 @@ func New(c Config) (*Server, error) {
 		return nil, err
 	}
 
-	fc := fishbase.New(http.DefaultClient)
-
 	return &Server{
-		dbManager:      dbManager,
-		fishbaseClient: fc,
+		dbManager: dbManager,
 	}, nil
 }
 
 func (s *Server) Heartbeat(ctx context.Context, req *trackmyfishv1alpha1.HeartbeatRequest) (*trackmyfishv1alpha1.HeartbeatResponse, error) {
-	d, err := s.fishbaseClient.GetHeartbeat()
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to get heartbeat information")
-	}
-
-	return &trackmyfishv1alpha1.HeartbeatResponse{
-		Fishbase: &trackmyfishv1alpha1.HeartbeatStatus{
-			Status: fishbaseStatusToStatus(d.Status),
-		},
-	}, nil
+	return &trackmyfishv1alpha1.HeartbeatResponse{}, nil
 }
 
 func (s *Server) AddFish(ctx context.Context, req *trackmyfishv1alpha1.AddFishRequest) (*trackmyfishv1alpha1.AddFishResponse, error) {
-	d, err := fishbase.GetDetails(req.GetFish().GetGenus(), req.GetFish().GetSpecies())
-	if err != nil {
-		logrus.WithFields(logrus.Fields{
-			"stack": err,
-		}).Error("Unable to get fish details")
-	}
-
 	rsp, err := s.dbManager.InsertFish(ctx, db.Fish{
-		Genus:              req.GetFish().GetGenus(),
-		Species:            req.GetFish().GetSpecies(),
-		CommonName:         req.GetFish().GetCommonName(),
-		Name:               req.GetFish().GetName(),
-		Color:              req.GetFish().GetColor(),
-		Gender:             req.GetFish().GetGender().String(),
-		PurchaseDate:       req.GetFish().GetPurchaseDate(),
-		EcosystemName:      d.Ecosystem.Name,
-		EcosystemType:      d.Ecosystem.Type,
-		EchosystemLocation: d.Ecosystem.Location,
-		Salinity:           d.Ecosystem.Salinity,
-		Climate:            d.Ecosystem.Climate,
-		Count:              req.GetFish().GetCount(),
+		Type:         req.GetFish().GetType(),
+		Subtype:      req.GetFish().GetSubtype(),
+		Color:        req.GetFish().GetColor(),
+		Gender:       req.GetFish().GetGender().String(),
+		PurchaseDate: req.GetFish().GetPurchaseDate(),
+		Count:        req.GetFish().GetCount(),
 	})
 	if err != nil {
 		return nil, err
@@ -87,20 +58,13 @@ func (s *Server) AddFish(ctx context.Context, req *trackmyfishv1alpha1.AddFishRe
 
 	return &trackmyfishv1alpha1.AddFishResponse{
 		Fish: &trackmyfishv1alpha1.Fish{
-			Id:                rsp.ID,
-			Genus:             rsp.Genus,
-			Species:           rsp.Species,
-			CommonName:        rsp.CommonName,
-			Name:              rsp.Name,
-			Color:             rsp.Color,
-			Gender:            stringToGender(rsp.Gender),
-			PurchaseDate:      rsp.PurchaseDate,
-			EcosystemName:     rsp.EcosystemName,
-			EcosystemType:     rsp.EcosystemType,
-			EcosystemLocation: rsp.EchosystemLocation,
-			Salinity:          rsp.Salinity,
-			Climate:           rsp.Climate,
-			Count:             rsp.Count,
+			Id:           rsp.ID,
+			Type:         rsp.Type,
+			Subtype:      rsp.Subtype,
+			Color:        rsp.Color,
+			Gender:       stringToGender(rsp.Gender),
+			PurchaseDate: rsp.PurchaseDate,
+			Count:        rsp.Count,
 		},
 	}, nil
 }
@@ -114,20 +78,13 @@ func (s *Server) ListFish(ctx context.Context, req *trackmyfishv1alpha1.ListFish
 	f := make([]*trackmyfishv1alpha1.Fish, len(rsp))
 	for i, fish := range rsp {
 		f[i] = &trackmyfishv1alpha1.Fish{
-			Id:                fish.ID,
-			Genus:             fish.Genus,
-			Species:           fish.Species,
-			CommonName:        fish.CommonName,
-			Name:              fish.Name,
-			Color:             fish.Color,
-			Gender:            stringToGender(fish.Gender),
-			PurchaseDate:      fish.PurchaseDate,
-			EcosystemName:     fish.EcosystemName,
-			EcosystemType:     fish.EcosystemType,
-			EcosystemLocation: fish.EchosystemLocation,
-			Salinity:          fish.Salinity,
-			Climate:           fish.Climate,
-			Count:             fish.Count,
+			Id:           fish.ID,
+			Type:         fish.Type,
+			Subtype:      fish.Subtype,
+			Color:        fish.Color,
+			Gender:       stringToGender(fish.Gender),
+			PurchaseDate: fish.PurchaseDate,
+			Count:        fish.Count,
 		}
 	}
 
@@ -144,20 +101,13 @@ func (s *Server) DeleteFish(ctx context.Context, req *trackmyfishv1alpha1.Delete
 
 	return &trackmyfishv1alpha1.DeleteFishResponse{
 		Fish: &trackmyfishv1alpha1.Fish{
-			Id:                rsp.ID,
-			Genus:             rsp.Genus,
-			Species:           rsp.Species,
-			CommonName:        rsp.CommonName,
-			Name:              rsp.Name,
-			Color:             rsp.Color,
-			Gender:            stringToGender(rsp.Gender),
-			PurchaseDate:      rsp.PurchaseDate,
-			EcosystemName:     rsp.EcosystemName,
-			EcosystemType:     rsp.EcosystemType,
-			EcosystemLocation: rsp.EchosystemLocation,
-			Salinity:          rsp.Salinity,
-			Climate:           rsp.Climate,
-			Count:             rsp.Count,
+			Id:           rsp.ID,
+			Type:         rsp.Type,
+			Subtype:      rsp.Subtype,
+			Color:        rsp.Color,
+			Gender:       stringToGender(rsp.Gender),
+			PurchaseDate: rsp.PurchaseDate,
+			Count:        rsp.Count,
 		},
 	}, nil
 }
@@ -345,17 +295,4 @@ func stringToGender(gender string) trackmyfishv1alpha1.Fish_Gender {
 	}
 
 	return trackmyfishv1alpha1.Fish_UNSPECIFIED
-}
-
-func fishbaseStatusToStatus(fs fishbase.HeartbeatStatus) trackmyfishv1alpha1.HeartbeatStatus_Status {
-	switch fs {
-	case fishbase.HeartbeatStatusDown:
-		return trackmyfishv1alpha1.HeartbeatStatus_DOWN
-	case fishbase.HeartbeatStatusDegraded:
-		return trackmyfishv1alpha1.HeartbeatStatus_DEGRADED
-	case fishbase.HeartbeatStatusOperational:
-		return trackmyfishv1alpha1.HeartbeatStatus_OPERATIONAL
-	}
-
-	return trackmyfishv1alpha1.HeartbeatStatus_UNSPECIFIED
 }
