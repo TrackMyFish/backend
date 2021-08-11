@@ -41,9 +41,9 @@ docker-push:
 
 .PHONY: docker-all
 docker-all: docker-build docker-tag docker-push
-	echo "================================================"
-	echo "Docker image has been built, tagged and pushed"
-	echo "================================================"
+	@echo "================================================"
+	@echo "Docker image has been built, tagged and pushed"
+	@echo "================================================"
 
 .PHONY: gosec
 run-gosec:
