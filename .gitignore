@@ -2,3 +2,5 @@
 coverage.txt
 report.xml
 test.txt
+
+integration-tests-db/

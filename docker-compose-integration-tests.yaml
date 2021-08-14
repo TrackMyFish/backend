@@ -1,0 +1,39 @@
+---
+version: "3"
+services:
+  integration_tests_db:
+    image: postgres
+    container_name: integration_tests_db
+    networks:
+      - integration-tests
+    environment:
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_USER=user
+      - POSTGRES_DB=trackmyfishtests
+    volumes:
+      - ./integration-tests-db:/var/lib/postgresql/data
+    restart: unless-stopped
+    # We need to be able to communicate with the db from the
+    # host machine, so have to expose the port. Don't use
+    # the standard 5432 otherwise we'll conflict with other
+    # psql instances.
+    ports:
+      - 15432:5432
+  # The migration has to be run to ensure our test database
+  # is ready.
+  integration_tests_migrations:
+    image: simondrake/trackmyfish_migrations:v1alpha1
+    container_name: integration_tests_migrations
+    networks:
+      - integration-tests
+    depends_on:
+      - integration_tests_db
+    environment:
+      - DATABASE_HOST=integration_tests_db
+      - DATABASE_PORT=5432
+      - DATABASE_USERNAME=user
+      - DATABASE_PASSWORD=password
+      - DATABASE_NAME=trackmyfishtests
+
+networks:
+  integration-tests:

@@ -2,11 +2,13 @@
 
 Provides a gRPC and optional HTTP backend for TrackMyFish.
 
-# gRPC requests
 
-## Pre-requisites
+# Pre-requisites
 
 - Install [grpcurl](https://github.com/fullstorydev/grpcurl)
+- Go >= 1.16. Because we use embed, any versions older than 1.16 won't work.
+
+# gRPC requests
 
 ## List services
 
@@ -83,6 +85,28 @@ docker login
 docker tag trackmyfish simondrake/trackmyfish:v1alpha1
 
 docker push simondrake/trackmyfish:v1alpha1
+```
+
+# Tests
+
+Tests are separated into two separate categories
+
+## Unit Tests
+
+Unit Tests do not require any set-up steps and can simply be run with `make test`
+
+## Integration Tests
+
+Integration Tests require actual services to be up (e.g. Postgres), so require a bit of set-up before they can be run.
+
+* Run the test database (`docker-compose -f docker-compose-integration-tests.yaml up -d`)
+* Run the `docker-compose` command again, because the DB won't be available when the migrations run (see [#1](https://github.com/TrackMyFish/TrackMyFish/issues/1))
+* Run `make integration-test`
+
+**Note:** If you need to login to the db container, you can do so with the following command:
+
+```
+docker exec -it integration_tests_db psql postgresql://user:password@localhost:5432/trackmyfishtests
 ```
 
 # ToDo

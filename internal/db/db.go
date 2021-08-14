@@ -103,7 +103,7 @@ func (d *Manager) InsertFish(ctx context.Context, fish Fish) (Fish, error) {
 	return f, nil
 }
 
-func (d *Manager) GetFish(ctx context.Context) ([]Fish, error) {
+func (d *Manager) ListFish(ctx context.Context) ([]Fish, error) {
 	fish := make([]Fish, 0)
 
 	rows, err := d.pool.Query(ctx, "SELECT id, type, subtype, color, gender, purchase_date, count FROM fish")
@@ -171,7 +171,7 @@ func (d *Manager) InsertTankStatistic(ctx context.Context, tankStatistic TankSta
 	return ts, nil
 }
 
-func (d *Manager) GetTankStatistics(ctx context.Context) ([]TankStatistic, error) {
+func (d *Manager) ListTankStatistics(ctx context.Context) ([]TankStatistic, error) {
 	tankStats := make([]TankStatistic, 0)
 
 	rows, err := d.pool.Query(ctx, "SELECT id, test_date, ph, gh, kh, ammonia, nitrite, nitrate, phosphate FROM tank_statistics")

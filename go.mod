@@ -11,6 +11,7 @@ require (
 	github.com/jackc/pgproto3/v2 v2.1.0 // indirect
 	github.com/jackc/pgx/v4 v4.11.0
 	github.com/lib/pq v1.4.0 // indirect
+	github.com/openlyinc/pointy v1.1.2
 	github.com/pkg/errors v0.9.1
 	github.com/shopspring/decimal v0.0.0-20200419222939-1884f454f8ea // indirect
 	github.com/sirupsen/logrus v1.8.1

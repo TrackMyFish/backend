@@ -2,16 +2,37 @@ package server
 
 import (
 	"context"
+	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"github.com/trackmyfish/backend/internal/db"
 	trackmyfishv1alpha1 "github.com/trackmyfish/proto/trackmyfish/v1alpha1"
 )
 
+type fishQuerier interface {
+	ListFish(context.Context) ([]db.Fish, error)
+}
+
+type fishModifier interface {
+	InsertFish(context.Context, db.Fish) (db.Fish, error)
+	DeleteFish(context.Context, int32) (db.Fish, error)
+}
+
+type tankStatQuerier interface {
+	ListTankStatistics(context.Context) ([]db.TankStatistic, error)
+}
+
+type tankStatModifier interface {
+	InsertTankStatistic(context.Context, db.TankStatistic) (db.TankStatistic, error)
+	DeleteTankStatistic(context.Context, int32) (db.TankStatistic, error)
+}
+
 // Server is the implementation of the trackmyfishv1alpha1.TrackMyFishServiceServer
 type Server struct {
-	dbManager *db.Manager
+	fishQuerier      fishQuerier
+	fishModifier     fishModifier
+	tankStatQuerier  tankStatQuerier
+	tankStatModifier tankStatModifier
 }
 
 type Config struct {
@@ -31,11 +52,14 @@ func New(c Config) (*Server, error) {
 		Database: c.DBName,
 	})
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "unable to create db instance")
 	}
 
 	return &Server{
-		dbManager: dbManager,
+		fishQuerier:      dbManager,
+		fishModifier:     dbManager,
+		tankStatQuerier:  dbManager,
+		tankStatModifier: dbManager,
 	}, nil
 }
 
@@ -44,7 +68,7 @@ func (s *Server) Heartbeat(ctx context.Context, req *trackmyfishv1alpha1.Heartbe
 }
 
 func (s *Server) AddFish(ctx context.Context, req *trackmyfishv1alpha1.AddFishRequest) (*trackmyfishv1alpha1.AddFishResponse, error) {
-	rsp, err := s.dbManager.InsertFish(ctx, db.Fish{
+	rsp, err := s.fishModifier.InsertFish(ctx, db.Fish{
 		Type:         req.GetFish().GetType(),
 		Subtype:      req.GetFish().GetSubtype(),
 		Color:        req.GetFish().GetColor(),
@@ -53,7 +77,7 @@ func (s *Server) AddFish(ctx context.Context, req *trackmyfishv1alpha1.AddFishRe
 		Count:        req.GetFish().GetCount(),
 	})
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "unable to add fish")
 	}
 
 	return &trackmyfishv1alpha1.AddFishResponse{
@@ -70,9 +94,9 @@ func (s *Server) AddFish(ctx context.Context, req *trackmyfishv1alpha1.AddFishRe
 }
 
 func (s *Server) ListFish(ctx context.Context, req *trackmyfishv1alpha1.ListFishRequest) (*trackmyfishv1alpha1.ListFishResponse, error) {
-	rsp, err := s.dbManager.GetFish(ctx)
+	rsp, err := s.fishQuerier.ListFish(ctx)
 	if err != nil {
-		logrus.WithFields(logrus.Fields{})
+		return nil, errors.Wrap(err, "unable to list fish")
 	}
 
 	f := make([]*trackmyfishv1alpha1.Fish, len(rsp))
@@ -94,9 +118,9 @@ func (s *Server) ListFish(ctx context.Context, req *trackmyfishv1alpha1.ListFish
 }
 
 func (s *Server) DeleteFish(ctx context.Context, req *trackmyfishv1alpha1.DeleteFishRequest) (*trackmyfishv1alpha1.DeleteFishResponse, error) {
-	rsp, err := s.dbManager.DeleteFish(ctx, req.GetId())
+	rsp, err := s.fishModifier.DeleteFish(ctx, req.GetId())
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "unable to delete fish")
 	}
 
 	return &trackmyfishv1alpha1.DeleteFishResponse{
@@ -152,9 +176,9 @@ func (s *Server) AddTankStatistic(ctx context.Context, req *trackmyfishv1alpha1.
 		ts.Phosphate = &p
 	}
 
-	rsp, err := s.dbManager.InsertTankStatistic(ctx, ts)
+	rsp, err := s.tankStatModifier.InsertTankStatistic(ctx, ts)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "unable to add tank statistic")
 	}
 
 	tstat := &trackmyfishv1alpha1.TankStatistic{
@@ -194,7 +218,7 @@ func (s *Server) AddTankStatistic(ctx context.Context, req *trackmyfishv1alpha1.
 }
 
 func (s *Server) ListTankStatistics(ctx context.Context, req *trackmyfishv1alpha1.ListTankStatisticsRequest) (*trackmyfishv1alpha1.ListTankStatisticsResponse, error) {
-	rsp, err := s.dbManager.GetTankStatistics(ctx)
+	rsp, err := s.tankStatQuerier.ListTankStatistics(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to get tank statistics")
 	}
@@ -243,9 +267,9 @@ func (s *Server) ListTankStatistics(ctx context.Context, req *trackmyfishv1alpha
 }
 
 func (s *Server) DeleteTankStatistic(ctx context.Context, req *trackmyfishv1alpha1.DeleteTankStatisticRequest) (*trackmyfishv1alpha1.DeleteTankStatisticResponse, error) {
-	rsp, err := s.dbManager.DeleteTankStatistic(ctx, req.GetId())
+	rsp, err := s.tankStatModifier.DeleteTankStatistic(ctx, req.GetId())
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "unable to delete tank statistic")
 	}
 
 	tstat := &trackmyfishv1alpha1.TankStatistic{
@@ -287,7 +311,7 @@ func (s *Server) DeleteTankStatistic(ctx context.Context, req *trackmyfishv1alph
 }
 
 func stringToGender(gender string) trackmyfishv1alpha1.Fish_Gender {
-	switch gender {
+	switch strings.ToUpper(gender) {
 	case trackmyfishv1alpha1.Fish_MALE.String():
 		return trackmyfishv1alpha1.Fish_MALE
 	case trackmyfishv1alpha1.Fish_FEMALE.String():
