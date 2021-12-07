@@ -372,6 +372,184 @@ func TestDeleteTankStatistic(t *testing.T) {
 	})
 }
 
+func TestAddTank(t *testing.T) {
+	tm := &tankMock{}
+	s := Server{tankModifier: tm}
+
+	t.Run("Given a request to AddTank", func(t *testing.T) {
+		t.Run("When an error is returned", func(t *testing.T) {
+			t.Run("Then the error is returned to the caller", func(t *testing.T) {
+				tm.err = errors.New("an error")
+
+				r, err := s.AddTank(context.Background(), &trackmyfishv1alpha1.AddTankRequest{})
+				assert.EqualError(t, err, "unable to add tank: an error")
+				assert.Nil(t, r)
+			})
+		})
+		t.Run("When Optional fields aren't specified", func(t *testing.T) {
+			t.Run("Then they shouldn't be used", func(t *testing.T) {
+				tm.err = nil
+
+				r, err := s.AddTank(context.Background(), &trackmyfishv1alpha1.AddTankRequest{})
+				assert.NoError(t, err)
+				assert.NotNil(t, r)
+
+				assert.Nil(t, tm.insertTankRequest.Capacity)
+			})
+		})
+		t.Run("When Optional fields are specified", func(t *testing.T) {
+			t.Run("Then they should be used", func(t *testing.T) {
+				tm.err = nil
+
+				req := &trackmyfishv1alpha1.AddTankRequest{
+					Tank: &trackmyfishv1alpha1.Tank{
+						OptionalCapacity: &trackmyfishv1alpha1.Tank_Capacity{Capacity: 180},
+					},
+				}
+
+				r, err := s.AddTank(context.Background(), req)
+				assert.NoError(t, err)
+				assert.NotNil(t, r)
+
+				assert.NotNil(t, tm.insertTankRequest.Capacity)
+				assert.Equal(t, req.GetTank().GetCapacity(), *tm.insertTankRequest.Capacity)
+			})
+		})
+		t.Run("When pointer values are nil", func(t *testing.T) {
+			t.Run("Then they aren't returned", func(t *testing.T) {
+				tm.err = nil
+
+				r, err := s.AddTank(context.Background(), &trackmyfishv1alpha1.AddTankRequest{})
+				assert.NoError(t, err)
+				assert.NotNil(t, r)
+
+				assert.Nil(t, r.Tank.OptionalCapacity)
+			})
+		})
+		t.Run("When pointer values are not nil", func(t *testing.T) {
+			t.Run("Then they are returned", func(t *testing.T) {
+				tm.err = nil
+				tm.insertTankResponse = db.Tank{
+					ID:                  4,
+					Make:                "Juewl",
+					Model:               "Rio",
+					Name:                "Main Semi-Aggressive",
+					Location:            "Office",
+					CapacityMeasurement: "Litres",
+					Capacity:            pointy.Float32(180),
+					Description:         "Semi-Aggressive community tank",
+				}
+
+				r, err := s.AddTank(context.Background(), &trackmyfishv1alpha1.AddTankRequest{})
+				assert.NoError(t, err)
+				assert.NotNil(t, r)
+
+				assert.Equal(t, *tm.insertTankResponse.Capacity, r.GetTank().GetCapacity())
+			})
+		})
+	})
+}
+
+func TestListTanks(t *testing.T) {
+	tm := &tankMock{}
+	s := Server{tankQuerier: tm}
+
+	t.Run("Given a request to ListTanks", func(t *testing.T) {
+		t.Run("When an error is returned", func(t *testing.T) {
+			t.Run("Then the error is returned to the caller", func(t *testing.T) {
+				tm.err = errors.New("an error")
+
+				r, err := s.ListTanks(context.Background(), &trackmyfishv1alpha1.ListTanksRequest{})
+				assert.EqualError(t, err, "unable to get tanks: an error")
+				assert.Nil(t, r)
+			})
+		})
+		t.Run("When no results are returned", func(t *testing.T) {
+			t.Run("Then a length of 0 is returned to the caller", func(t *testing.T) {
+				tm.err = nil
+
+				r, err := s.ListTanks(context.Background(), &trackmyfishv1alpha1.ListTanksRequest{})
+				assert.NoError(t, err)
+				assert.NotNil(t, r)
+
+				assert.Len(t, r.Tanks, 0)
+			})
+		})
+		t.Run("When pointer values are not nil", func(t *testing.T) {
+			t.Run("Then they are returned", func(t *testing.T) {
+				tm.err = nil
+				tm.listTankResponse = []db.Tank{{
+					ID:                  4,
+					Make:                "Juwel",
+					Model:               "Rio",
+					Name:                "Main",
+					Location:            "Office",
+					CapacityMeasurement: "Litres",
+					Capacity:            pointy.Float32(180),
+					Description:         "Semi-Aggressive community",
+				}}
+
+				r, err := s.ListTanks(context.Background(), &trackmyfishv1alpha1.ListTanksRequest{})
+				assert.NoError(t, err)
+				assert.NotNil(t, r)
+
+				assert.Len(t, r.Tanks, 1)
+
+				assert.Equal(t, *tm.listTankResponse[0].Capacity, r.GetTanks()[0].GetCapacity())
+			})
+		})
+	})
+}
+
+func TestDeleteTank(t *testing.T) {
+	tm := &tankMock{}
+	s := Server{tankModifier: tm}
+
+	t.Run("Given a request to DeleteTank", func(t *testing.T) {
+		t.Run("When an error is returned", func(t *testing.T) {
+			t.Run("Then the error is returned to the caller", func(t *testing.T) {
+				tm.err = errors.New("an error")
+
+				r, err := s.DeleteTank(context.Background(), &trackmyfishv1alpha1.DeleteTankRequest{})
+				assert.EqualError(t, err, "unable to delete tank : an error")
+				assert.Nil(t, r)
+			})
+		})
+		t.Run("When Optional fields aren't specified", func(t *testing.T) {
+			t.Run("Then they shouldn't be used", func(t *testing.T) {
+				tm.err = nil
+
+				r, err := s.DeleteTank(context.Background(), &trackmyfishv1alpha1.DeleteTankRequest{})
+				assert.NoError(t, err)
+				assert.NotNil(t, r)
+
+				assert.Nil(t, tm.insertTankRequest.Capacity)
+			})
+		})
+		t.Run("When pointer values are not nil", func(t *testing.T) {
+			t.Run("Then they are returned", func(t *testing.T) {
+				tm.err = nil
+				tm.deleteTankResponse = db.Tank{
+					ID:                  4,
+					Make:                "Juwel",
+					Model:               "Rio",
+					Name:                "Main",
+					Location:            "Office",
+					CapacityMeasurement: "Litres",
+					Capacity:            pointy.Float32(180),
+					Description:         "Semi-Aggressive community",
+				}
+
+				r, err := s.DeleteTank(context.Background(), &trackmyfishv1alpha1.DeleteTankRequest{})
+				assert.NoError(t, err)
+				assert.NotNil(t, r)
+
+				assert.Equal(t, *tm.deleteTankResponse.Capacity, r.GetTank().GetCapacity())
+			})
+		})
+	})
+}
+
 func TestStringToGender(t *testing.T) {
 	testCases := []struct {
 		desc     string
@@ -460,4 +638,26 @@ func (f *tankStatsMock) DeleteTankStatistic(context.Context, int32) (db.TankStat
 
 func (f *tankStatsMock) ListTankStatistics(context.Context) ([]db.TankStatistic, error) {
 	return f.listTankStatisticsResponse, f.err
+}
+
+type tankMock struct {
+	insertTankResponse db.Tank
+	insertTankRequest  db.Tank
+	deleteTankResponse db.Tank
+	listTankResponse   []db.Tank
+	err                error
+}
+
+func (f *tankMock) InsertTank(ctx context.Context, req db.Tank) (db.Tank, error) {
+	f.insertTankRequest = req
+
+	return f.insertTankResponse, f.err
+}
+
+func (f *tankMock) DeleteTank(context.Context, int32) (db.Tank, error) {
+	return f.deleteTankResponse, f.err
+}
+
+func (f *tankMock) ListTanks(context.Context) ([]db.Tank, error) {
+	return f.listTankResponse, f.err
 }

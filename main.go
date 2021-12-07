@@ -100,7 +100,7 @@ func main() {
 		httpProxyPort    = viper.GetInt("server.httpProxy.port")
 
 		dbHost     = viper.GetString("db.host")
-		dbPort     = viper.GetInt("db.port")
+		dbPort     = viper.GetString("db.port")
 		dbUsername = viper.GetString("db.username")
 		dbPassword = viper.GetString("db.password")
 		dbName     = viper.GetString("db.name")
@@ -184,20 +184,6 @@ func httpProxyServer(port int, grpcAddr string) {
 	}).Info("Starting http proxy server")
 
 	logrus.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), r), "Failed to start http proxy server")
-}
-
-func Handler(mux *runtime.ServeMux) http.Handler {
-	return func(h http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// checking Values as map[string][]string also catches ?pretty and ?pretty=
-			// r.URL.Query().Get("pretty") would not.
-			if _, ok := r.URL.Query()["pretty"]; ok {
-				r.Header.Set("Accept", "application/json+pretty")
-			}
-
-			h.ServeHTTP(w, r)
-		})
-	}(mux)
 }
 
 func buildHandler() (http.Handler, error) {

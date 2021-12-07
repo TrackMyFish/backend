@@ -12,7 +12,6 @@ deps: go-junit-report
 go-junit-report:
 	go get -modfile=tools.mod github.com/jstemmer/go-junit-report@v0.0.0-20190106144839-af01ea7f8024
 
-
 .PHONY: run
 run: deps
 	go run --race main.go
@@ -48,3 +47,7 @@ docker-all: docker-build docker-tag docker-push
 .PHONY: gosec
 run-gosec:
 	gosec ./...
+
+.PHONY: lint
+lint:
+	golangci-lint run ./...

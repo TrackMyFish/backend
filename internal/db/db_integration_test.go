@@ -1,28 +1,171 @@
-//+build integration
+//go:build integration
+// +build integration
 
 package db_test
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
+	"log"
+	"os"
 	"testing"
+	"time"
 
+	_ "github.com/lib/pq"
 	"github.com/openlyinc/pointy"
+	"github.com/ory/dockertest/v3"
+	"github.com/ory/dockertest/v3/docker"
 	"github.com/stretchr/testify/assert"
 	"github.com/trackmyfish/backend/internal/db"
 )
 
-func TestFish(t *testing.T) {
-	m, err := db.New(db.Config{
-		Host:     "localhost",
-		Port:     15432,
-		Username: "user",
-		Password: "password",
-		Database: "trackmyfishtests",
+var mgr *db.Manager
+
+func TestMain(m *testing.M) {
+	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
+	pool, err := dockertest.NewPool("")
+	if err != nil {
+		log.Fatalf("Could not connect to docker: %s", err)
+	}
+
+	fmt.Println("Creating test container...")
+
+	// pulls an image, creates a container based on it and runs it
+	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
+		Repository: "postgres",
+		Tag:        "14",
+		Env: []string{
+			"POSTGRES_PASSWORD=secret",
+			"POSTGRES_USER=username",
+			"POSTGRES_DB=dbname",
+			"listen_addresses = '*'",
+		},
+	}, func(config *docker.HostConfig) {
+		// set AutoRemove to true so that stopped container goes away by itself
+		config.AutoRemove = true
+		config.RestartPolicy = docker.RestartPolicy{Name: "no"}
 	})
+	if err != nil {
+		log.Fatalf("Could not start resource: %s", err)
+	}
 
-	assert.NoError(t, err)
-	assert.NotNil(t, m)
+	hostAndPort := resource.GetHostPort("5432/tcp")
+	databaseUrl := fmt.Sprintf("postgres://username:secret@%s/dbname?sslmode=disable", hostAndPort)
 
+	log.Println("Connecting to database on url: ", databaseUrl)
+
+	resource.Expire(120) // Tell docker to hard kill the container in 120 seconds
+
+	var conn *sql.DB
+
+	// exponential backoff-retry, because the application in the container might not be ready to accept connections yet
+	pool.MaxWait = 120 * time.Second
+	if err = pool.Retry(func() error {
+		conn, err = sql.Open("postgres", databaseUrl)
+		if err != nil {
+			return err
+		}
+		return conn.Ping()
+	}); err != nil {
+		log.Fatalf("Could not connect to docker: %s", err)
+	}
+
+	if err := createTables(conn); err != nil {
+		log.Fatalf("Could not create tables: %s", err)
+	}
+
+	mgr, err = db.New(db.Config{
+		Host:     "localhost",
+		Port:     resource.GetPort("5432/tcp"),
+		Username: "username",
+		Password: "secret",
+		Database: "dbname",
+	})
+	if err != nil {
+		log.Fatalf("Could not create new db instance: %s", err)
+	}
+
+	// Run tests
+	code := m.Run()
+
+	// You can't defer this because os.Exit doesn't care for defer
+	if err := pool.Purge(resource); err != nil {
+		log.Fatalf("Could not purge resource: %s", err)
+	}
+
+	os.Exit(code)
+}
+
+func createTables(conn *sql.DB) error {
+	// Fish Table
+	query := `CREATE TABLE IF NOT EXISTS "fish" (
+  "id" SERIAL PRIMARY KEY NOT NULL,
+  "color" VARCHAR(255) DEFAULT '',
+  "gender" VARCHAR(255) DEFAULT '',
+  "purchase_date" VARCHAR(255) DEFAULT '',
+	"count" INT DEFAULT 0,
+	"type" VARCHAR(255) DEFAULT '',
+	"subtype" VARCHAR(255) DEFAULT '',
+  "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+	);`
+
+	if _, err := conn.Exec(query); err != nil {
+		return err
+	}
+
+	// Tank Statistics Table
+	query = `CREATE TABLE IF NOT EXISTS "tank_statistics" (
+  "id" SERIAL PRIMARY KEY NOT NULL,
+  "test_date" VARCHAR(255) DEFAULT NULL,
+  "ph" FLOAT DEFAULT NULL,
+  "gh" FLOAT DEFAULT NULL,
+  "kh" FLOAT DEFAULT NULL,
+  "ammonia" FLOAT DEFAULT NULL,
+  "nitrite" FLOAT DEFAULT NULL,
+  "nitrate" FLOAT DEFAULT NULL,
+  "phosphate" FLOAT DEFAULT NULL,
+  "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+	);`
+
+	if _, err := conn.Exec(query); err != nil {
+		return err
+	}
+
+	// Tanks table
+	query = `CREATE TABLE IF NOT EXISTS "tanks" (
+  "id" SERIAL PRIMARY KEY NOT NULL,
+  "make" VARCHAR(40) DEFAULT '',
+  "model" VARCHAR(40) DEFAULT '',
+  "name" VARCHAR(40) DEFAULT '',
+  "location" VARCHAR(40) DEFAULT '',
+  "capacity_measurement" VARCHAR(10) DEFAULT '',
+  "capacity" FLOAT DEFAULT NULL,
+  "description" VARCHAR(255) DEFAULT '',
+  "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+	);`
+
+	if _, err := conn.Exec(query); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func TestPing(t *testing.T) {
+	t.Run("Given a initialised db manager", func(t *testing.T) {
+		t.Run("When ping is called", func(t *testing.T) {
+			t.Run("Then no error is returned", func(t *testing.T) {
+				assert.NoError(t, mgr.Ping(context.Background()))
+			})
+		})
+	})
+}
+
+func TestFish(t *testing.T) {
 	t.Run("Given a valid Fish object", func(t *testing.T) {
 		var inserted db.Fish
 		var err error
@@ -31,7 +174,7 @@ func TestFish(t *testing.T) {
 
 		t.Run("When it is passed to InsertFish", func(t *testing.T) {
 			t.Run("Then it should create the record without error", func(t *testing.T) {
-				inserted, err = m.InsertFish(context.Background(), fish)
+				inserted, err = mgr.InsertFish(context.Background(), fish)
 				assert.NoError(t, err)
 				assert.NotNil(t, inserted)
 
@@ -46,7 +189,7 @@ func TestFish(t *testing.T) {
 
 		t.Run("When ListFish is called", func(t *testing.T) {
 			t.Run("Then the inserted Fish should exist", func(t *testing.T) {
-				f, err := m.ListFish(context.Background())
+				f, err := mgr.ListFish(context.Background())
 				assert.NoError(t, err)
 
 				assert.Len(t, f, 1)
@@ -63,7 +206,7 @@ func TestFish(t *testing.T) {
 
 		t.Run("When DeleteFish is called", func(t *testing.T) {
 			t.Run("Then the Fish is deleted", func(t *testing.T) {
-				f, err := m.DeleteFish(context.Background(), inserted.ID)
+				f, err := mgr.DeleteFish(context.Background(), inserted.ID)
 				assert.NoError(t, err)
 				assert.NotNil(t, f)
 
@@ -76,7 +219,7 @@ func TestFish(t *testing.T) {
 				assert.Equal(t, fish.Count, f.Count)
 
 				// Make sure the fish doesn't exist
-				lf, err := m.ListFish(context.Background())
+				lf, err := mgr.ListFish(context.Background())
 				assert.NoError(t, err)
 
 				assert.Len(t, lf, 0)
@@ -86,17 +229,6 @@ func TestFish(t *testing.T) {
 }
 
 func TestTankStatistics(t *testing.T) {
-	m, err := db.New(db.Config{
-		Host:     "localhost",
-		Port:     15432,
-		Username: "user",
-		Password: "password",
-		Database: "trackmyfishtests",
-	})
-
-	assert.NoError(t, err)
-	assert.NotNil(t, m)
-
 	t.Run("Given a valid TankStatistics object", func(t *testing.T) {
 		var inserted db.TankStatistic
 		var err error
@@ -114,7 +246,7 @@ func TestTankStatistics(t *testing.T) {
 
 		t.Run("When it is passed to InsertTankStatistic", func(t *testing.T) {
 			t.Run("Then it should create the record without error", func(t *testing.T) {
-				inserted, err = m.InsertTankStatistic(context.Background(), tankStat)
+				inserted, err = mgr.InsertTankStatistic(context.Background(), tankStat)
 				assert.NoError(t, err)
 				assert.NotNil(t, inserted)
 
@@ -131,7 +263,7 @@ func TestTankStatistics(t *testing.T) {
 
 		t.Run("When ListTankStatistics is called", func(t *testing.T) {
 			t.Run("Then the inserted TankStatistic should exist", func(t *testing.T) {
-				ts, err := m.ListTankStatistics(context.Background())
+				ts, err := mgr.ListTankStatistics(context.Background())
 				assert.NoError(t, err)
 
 				assert.Len(t, ts, 1)
@@ -150,7 +282,7 @@ func TestTankStatistics(t *testing.T) {
 
 		t.Run("When DeleteTankStatistic is called", func(t *testing.T) {
 			t.Run("Then the TankStatistic is deleted", func(t *testing.T) {
-				ts, err := m.DeleteTankStatistic(context.Background(), inserted.ID)
+				ts, err := mgr.DeleteTankStatistic(context.Background(), inserted.ID)
 				assert.NoError(t, err)
 				assert.NotNil(t, ts)
 
@@ -165,7 +297,79 @@ func TestTankStatistics(t *testing.T) {
 				assert.Equal(t, tankStat.Phosphate, ts.Phosphate)
 
 				// Make sure the stat doesn't exist
-				lts, err := m.ListTankStatistics(context.Background())
+				lts, err := mgr.ListTankStatistics(context.Background())
+				assert.NoError(t, err)
+
+				assert.Len(t, lts, 0)
+			})
+		})
+	})
+}
+
+func TestTanks(t *testing.T) {
+	t.Run("Given a valid Tank object", func(t *testing.T) {
+		var inserted db.Tank
+		var err error
+
+		tank := db.Tank{
+			Make:                "Jewel",
+			Model:               "Rio 180 LED",
+			Name:                "Main",
+			Location:            "Office",
+			CapacityMeasurement: "Litres",
+			Capacity:            pointy.Float32(180),
+			Description:         "Semi-Aggressive tank",
+		}
+
+		t.Run("When it is passed to InsertTank", func(t *testing.T) {
+			t.Run("Then it should create the record without error", func(t *testing.T) {
+				inserted, err = mgr.InsertTank(context.Background(), tank)
+				assert.NoError(t, err)
+				assert.NotNil(t, inserted)
+
+				assert.Equal(t, tank.Make, inserted.Make)
+				assert.Equal(t, tank.Model, inserted.Model)
+				assert.Equal(t, tank.Name, inserted.Name)
+				assert.Equal(t, tank.Location, inserted.Location)
+				assert.Equal(t, tank.CapacityMeasurement, inserted.CapacityMeasurement)
+				assert.Equal(t, tank.Capacity, inserted.Capacity)
+				assert.Equal(t, tank.Description, inserted.Description)
+			})
+		})
+
+		t.Run("When ListTanks is called", func(t *testing.T) {
+			t.Run("Then the inserted Tank should exist", func(t *testing.T) {
+				ts, err := mgr.ListTanks(context.Background())
+				assert.NoError(t, err)
+
+				assert.Len(t, ts, 1)
+
+				assert.Equal(t, tank.Make, ts[0].Make)
+				assert.Equal(t, tank.Model, ts[0].Model)
+				assert.Equal(t, tank.Name, ts[0].Name)
+				assert.Equal(t, tank.Location, ts[0].Location)
+				assert.Equal(t, tank.CapacityMeasurement, ts[0].CapacityMeasurement)
+				assert.Equal(t, tank.Capacity, ts[0].Capacity)
+				assert.Equal(t, tank.Description, ts[0].Description)
+			})
+		})
+
+		t.Run("When DeleteTank is called", func(t *testing.T) {
+			t.Run("Then the Tank is deleted", func(t *testing.T) {
+				tank, err := mgr.DeleteTank(context.Background(), inserted.ID)
+				assert.NoError(t, err)
+				assert.NotNil(t, tank)
+
+				assert.Equal(t, tank.Make, inserted.Make)
+				assert.Equal(t, tank.Model, inserted.Model)
+				assert.Equal(t, tank.Name, inserted.Name)
+				assert.Equal(t, tank.Location, inserted.Location)
+				assert.Equal(t, tank.CapacityMeasurement, inserted.CapacityMeasurement)
+				assert.Equal(t, tank.Capacity, inserted.Capacity)
+				assert.Equal(t, tank.Description, inserted.Description)
+
+				// Make sure the stat doesn't exist
+				lts, err := mgr.ListTanks(context.Background())
 				assert.NoError(t, err)
 
 				assert.Len(t, lts, 0)

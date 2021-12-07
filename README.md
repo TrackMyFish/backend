@@ -63,6 +63,24 @@ curl -H "Content-Type: application/json" -X GET localhost:8443/api/v1alpha1/tank
 curl -H "Content-Type: application/json" -X DELETE localhost:8443/api/v1alpha1/tank/statistics/1
 ```
 
+## Add Tank
+
+```
+curl -H "Content-Type: application/json" -X POST localhost:8443/api/v1alpha1/tanks -d '{"make": "Juwel", "model": "Rio 180", "name": "Semi-Aggressive", "location": "Office"}'
+```
+
+## List Tank
+
+```
+curl -H "Content-Type: application/json" -X GET localhost:8443/api/v1alpha1/tanks
+```
+
+## Delete Tank
+
+```
+curl -H "Content-Type: application/json" -X DELETE localhost:8443/api/v1alpha1/tanks/1
+```
+
 # Running the Dockerfile
 
 ## Build the image

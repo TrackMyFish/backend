@@ -27,17 +27,28 @@ type tankStatModifier interface {
 	DeleteTankStatistic(context.Context, int32) (db.TankStatistic, error)
 }
 
+type tankQuerier interface {
+	ListTanks(context.Context) ([]db.Tank, error)
+}
+
+type tankModifier interface {
+	InsertTank(context.Context, db.Tank) (db.Tank, error)
+	DeleteTank(context.Context, int32) (db.Tank, error)
+}
+
 // Server is the implementation of the trackmyfishv1alpha1.TrackMyFishServiceServer
 type Server struct {
 	fishQuerier      fishQuerier
 	fishModifier     fishModifier
 	tankStatQuerier  tankStatQuerier
 	tankStatModifier tankStatModifier
+	tankQuerier      tankQuerier
+	tankModifier     tankModifier
 }
 
 type Config struct {
 	DBHost     string
-	DBPort     int
+	DBPort     string
 	DBUsername string
 	DBPassword string
 	DBName     string
@@ -60,6 +71,8 @@ func New(c Config) (*Server, error) {
 		fishModifier:     dbManager,
 		tankStatQuerier:  dbManager,
 		tankStatModifier: dbManager,
+		tankQuerier:      dbManager,
+		tankModifier:     dbManager,
 	}, nil
 }
 
@@ -310,6 +323,98 @@ func (s *Server) DeleteTankStatistic(ctx context.Context, req *trackmyfishv1alph
 	}, nil
 }
 
+func (s *Server) AddTank(ctx context.Context, req *trackmyfishv1alpha1.AddTankRequest) (*trackmyfishv1alpha1.AddTankResponse, error) {
+	ts := db.Tank{
+		Make:                req.GetTank().GetMake(),
+		Model:               req.GetTank().GetModel(),
+		Name:                req.GetTank().GetName(),
+		Location:            req.GetTank().GetLocation(),
+		CapacityMeasurement: req.GetTank().GetCapacityMeasurement().String(),
+		Description:         req.GetTank().GetDescription(),
+	}
+
+	if req.GetTank().GetOptionalCapacity() != nil {
+		cap := req.GetTank().GetCapacity()
+		ts.Capacity = &cap
+	}
+
+	rsp, err := s.tankModifier.InsertTank(ctx, ts)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to add tank")
+	}
+
+	tank := &trackmyfishv1alpha1.Tank{
+		Id:                  rsp.ID,
+		Make:                rsp.Make,
+		Model:               rsp.Model,
+		Name:                rsp.Name,
+		Location:            rsp.Location,
+		CapacityMeasurement: stringToCapacity(rsp.CapacityMeasurement),
+		Description:         rsp.Description,
+	}
+
+	if rsp.Capacity != nil {
+		tank.OptionalCapacity = &trackmyfishv1alpha1.Tank_Capacity{Capacity: *rsp.Capacity}
+	}
+
+	return &trackmyfishv1alpha1.AddTankResponse{Tank: tank}, nil
+}
+
+func (s *Server) ListTanks(ctx context.Context, req *trackmyfishv1alpha1.ListTanksRequest) (*trackmyfishv1alpha1.ListTanksResponse, error) {
+	rsp, err := s.tankQuerier.ListTanks(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to get tanks")
+	}
+
+	tanks := make([]*trackmyfishv1alpha1.Tank, len(rsp))
+	for i, t := range rsp {
+		tank := &trackmyfishv1alpha1.Tank{
+			Id:                  t.ID,
+			Make:                t.Make,
+			Model:               t.Model,
+			Name:                t.Name,
+			Location:            t.Location,
+			CapacityMeasurement: stringToCapacity(t.CapacityMeasurement),
+			Description:         t.Description,
+		}
+
+		if t.Capacity != nil {
+			tank.OptionalCapacity = &trackmyfishv1alpha1.Tank_Capacity{Capacity: *t.Capacity}
+		}
+
+		tanks[i] = tank
+	}
+
+	return &trackmyfishv1alpha1.ListTanksResponse{
+		Tanks: tanks,
+	}, nil
+}
+
+func (s *Server) DeleteTank(ctx context.Context, req *trackmyfishv1alpha1.DeleteTankRequest) (*trackmyfishv1alpha1.DeleteTankResponse, error) {
+	rsp, err := s.tankModifier.DeleteTank(ctx, req.GetId())
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to delete tank ")
+	}
+
+	tank := &trackmyfishv1alpha1.Tank{
+		Id:                  rsp.ID,
+		Make:                rsp.Make,
+		Model:               rsp.Model,
+		Name:                rsp.Name,
+		Location:            rsp.Location,
+		CapacityMeasurement: stringToCapacity(rsp.CapacityMeasurement),
+		Description:         rsp.Description,
+	}
+
+	if rsp.Capacity != nil {
+		tank.OptionalCapacity = &trackmyfishv1alpha1.Tank_Capacity{Capacity: *rsp.Capacity}
+	}
+
+	return &trackmyfishv1alpha1.DeleteTankResponse{
+		Tank: tank,
+	}, nil
+}
+
 func stringToGender(gender string) trackmyfishv1alpha1.Fish_Gender {
 	switch strings.ToUpper(gender) {
 	case trackmyfishv1alpha1.Fish_MALE.String():
@@ -319,4 +424,15 @@ func stringToGender(gender string) trackmyfishv1alpha1.Fish_Gender {
 	}
 
 	return trackmyfishv1alpha1.Fish_UNSPECIFIED
+}
+
+func stringToCapacity(capacity string) trackmyfishv1alpha1.Tank_CapacityMeasurement {
+	switch strings.ToUpper(capacity) {
+	case trackmyfishv1alpha1.Tank_GALLONS.String():
+		return trackmyfishv1alpha1.Tank_GALLONS
+	case trackmyfishv1alpha1.Tank_LITRES.String():
+		return trackmyfishv1alpha1.Tank_LITRES
+	}
+
+	return trackmyfishv1alpha1.Tank_UNSPECIFIED
 }
