@@ -24,17 +24,17 @@ func TestNew(t *testing.T) {
 		},
 		{
 			desc:        "Empty username should return error",
-			conf:        Config{Host: "host", Port: 1111},
+			conf:        Config{Host: "host", Port: "1111"},
 			expectedErr: "user not defined",
 		},
 		{
 			desc:        "Empty password should return error",
-			conf:        Config{Host: "host", Port: 1111, Username: "user"},
+			conf:        Config{Host: "host", Port: "1111", Username: "user"},
 			expectedErr: "password not defined",
 		},
 		{
 			desc:        "Empty database should return error",
-			conf:        Config{Host: "host", Port: 1111, Username: "user", Password: "password"},
+			conf:        Config{Host: "host", Port: "1111", Username: "user", Password: "password"},
 			expectedErr: "database not defined",
 		},
 	}

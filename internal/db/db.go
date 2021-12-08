@@ -11,7 +11,7 @@ import (
 
 type Config struct {
 	Host     string
-	Port     int
+	Port     string
 	Username string
 	Password string
 	Database string
@@ -53,12 +53,23 @@ type TankStatistic struct {
 	Phosphate *float32
 }
 
+type Tank struct {
+	ID                  int32
+	Make                string
+	Model               string
+	Name                string
+	Location            string
+	CapacityMeasurement string
+	Capacity            *float32
+	Description         string
+}
+
 func New(c Config) (*Manager, error) {
 	if c.Host == "" {
 		return nil, errors.New("host not defined")
 	}
 
-	if c.Port == 0 {
+	if c.Port == "" {
 		return nil, errors.New("port not defined")
 	}
 
@@ -74,7 +85,7 @@ func New(c Config) (*Manager, error) {
 		return nil, errors.New("database not defined")
 	}
 
-	dbURL := fmt.Sprintf("postgres://%s:%s@%s:%d/%s", c.Username, c.Password, c.Host, c.Port, c.Database)
+	dbURL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s", c.Username, c.Password, c.Host, c.Port, c.Database)
 
 	pool, err := pgxpool.Connect(context.Background(), dbURL)
 	if err != nil {
@@ -82,6 +93,10 @@ func New(c Config) (*Manager, error) {
 	}
 
 	return &Manager{pool: pool}, nil
+}
+
+func (d *Manager) Ping(ctx context.Context) error {
+	return d.pool.Ping(ctx)
 }
 
 func (d *Manager) InsertFish(ctx context.Context, fish Fish) (Fish, error) {
@@ -161,7 +176,7 @@ func (d *Manager) InsertTankStatistic(ctx context.Context, tankStatistic TankSta
 		tankStatistic.TestDate, tankStatistic.PH, tankStatistic.GH, tankStatistic.KH, tankStatistic.Ammonia, tankStatistic.Nitrite, tankStatistic.Nitrate, tankStatistic.Phosphate,
 	).Scan(&ts.ID, &ts.TestDate, &ts.PH, &ts.GH, &ts.KH, &ts.Ammonia, &ts.Nitrite, &ts.Nitrate, &ts.Phosphate)
 	if err != nil {
-		return ts, errors.Wrap(err, "unable to add fish")
+		return ts, errors.Wrap(err, "unable to add tank statistic")
 	}
 
 	logrus.WithFields(logrus.Fields{
@@ -216,6 +231,74 @@ func (d *Manager) DeleteTankStatistic(ctx context.Context, id int32) (TankStatis
 	logrus.WithFields(logrus.Fields{
 		"id": ts.ID,
 	}).Info("Tank Statistic deleted successfully")
+
+	return ts, nil
+}
+
+func (d *Manager) InsertTank(ctx context.Context, tank Tank) (Tank, error) {
+	ts := Tank{}
+
+	err := d.pool.QueryRow(
+		ctx,
+		"INSERT INTO tanks(make, model, name, location, capacity_measurement, capacity, description) VALUES($1, $2, $3, $4, $5, $6, $7) RETURNING id, make, model, name, location, capacity_measurement, capacity, description",
+		tank.Make, tank.Model, tank.Name, tank.Location, tank.CapacityMeasurement, tank.Capacity, tank.Description,
+	).Scan(&ts.ID, &ts.Make, &ts.Model, &ts.Name, &ts.Location, &ts.CapacityMeasurement, &ts.Capacity, &ts.Description)
+	if err != nil {
+		return ts, errors.Wrap(err, "unable to add tank")
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"id": ts.ID,
+	}).Info("Tank inserted successfully")
+
+	return ts, nil
+}
+
+func (d *Manager) ListTanks(ctx context.Context) ([]Tank, error) {
+	tankStats := make([]Tank, 0)
+
+	rows, err := d.pool.Query(ctx, "SELECT id, make, model, name, location, capacity_measurement, capacity, description FROM tanks")
+	if err != nil {
+		return tankStats, errors.Wrap(err, "unable to get tank")
+	}
+
+	rowCount := 0
+	for rows.Next() {
+		ts := Tank{}
+
+		if err := rows.Scan(&ts.ID, &ts.Make, &ts.Model, &ts.Name, &ts.Location, &ts.CapacityMeasurement, &ts.Capacity, &ts.Description); err != nil {
+			return nil, errors.Wrap(err, "unable to scan row")
+		}
+
+		tankStats = append(tankStats, ts)
+
+		rowCount++
+	}
+
+	if rows.Err() != nil {
+		return nil, errors.Wrap(rows.Err(), "erroring reading rows")
+	}
+
+	logrus.WithFields(logrus.Fields{"rowCount": rowCount}).Info("Tanks queried successfully")
+
+	return tankStats, nil
+}
+
+func (d *Manager) DeleteTank(ctx context.Context, id int32) (Tank, error) {
+	ts := Tank{}
+
+	err := d.pool.QueryRow(
+		ctx,
+		"DELETE FROM tanks WHERE id=$1 RETURNING id, make, model, name, location, capacity_measurement, capacity, description",
+		id,
+	).Scan(&ts.ID, &ts.Make, &ts.Model, &ts.Name, &ts.Location, &ts.CapacityMeasurement, &ts.Capacity, &ts.Description)
+	if err != nil {
+		return ts, errors.Wrap(err, "unable to delete tank")
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"id": ts.ID,
+	}).Info("Tank deleted successfully")
 
 	return ts, nil
 }
